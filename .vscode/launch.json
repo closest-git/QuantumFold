@@ -8,7 +8,7 @@
             "name": "train",
             "type": "python",
             "request": "launch",
-            "program": "E:/QuantumNet/cnn/train.py",
+            "program": "E:/QuantumFold/cnn/train.py",
             "console": "integratedTerminal",
             "cwd": "${workspaceRoot}",
             "env": {
@@ -19,7 +19,7 @@
             "name": "search",
             "type": "python",
             "request": "launch",
-            "program": "E:/QuantumNet/cnn/train_search.py",
+            "program": "E:/QuantumFold/cnn/train_search.py",
             "console": "integratedTerminal",
             "cwd": "${workspaceRoot}",
             "env": {

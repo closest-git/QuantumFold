@@ -53,12 +53,12 @@ class MixedOp_PCC(nn.Module):
             if 'pool' in primitive:
                 op = nn.Sequential(op, nn.BatchNorm2d(C // 4, affine=False))
             self._ops.append(op)
+        nOP = len(self._ops)
+        self.desc = f"MixedOp_{nOP}_C{C}_stride{stride}"
 
     def __repr__(self):
-        desc = f"{self._ops}"
-        nOP = len(self._ops)
-        desc_simple = f"MixedOp_{nOP}_C{self.C}_stride{self.stride}"
-        return desc_simple
+        desc = f"{self._ops}"               
+        return self.desc
 
     def forward(self, x, weights):
         # channel proportion k=4

@@ -19,6 +19,7 @@ from torch.autograd import Variable
 from model_search import Network
 from architect import Architect
 from some_utils import *
+from config import *
 
 parser = argparse.ArgumentParser("cifar")
 parser.add_argument('--data', type=str, default='../data', help='location of the data corpus')
@@ -65,6 +66,9 @@ def main():
   if not torch.cuda.is_available():
     logging.info('no gpu device available')
     sys.exit(1)
+  config = QuantumFold_config(None,0)
+  if config.op_struc == "":
+    args.batch_size = args.batch_size//4
   OnInitInstance(args.seed,args.gpu)
   args.load_workers = 8
 
@@ -79,7 +83,7 @@ def main():
 
   criterion = nn.CrossEntropyLoss()
   criterion = criterion.cuda()
-  model = Network(args.init_channels, CIFAR_CLASSES, args.layers, criterion)
+  model = Network(config,args.init_channels, CIFAR_CLASSES, args.layers, criterion)
   print(model)
   #dump_model_params(model)
   model = model.cuda()
@@ -117,6 +121,9 @@ def main():
 
   architect = Architect(model, args)
   print(architect)
+  print(f"======\tconfig={config.__dict__}")
+  print(f"======\targs={args.__dict__}")
+
   for epoch in range(args.epochs):
     scheduler.step()
     lr = scheduler.get_lr()[0]
@@ -173,8 +180,8 @@ def train(train_queue, valid_queue, model, architect, criterion, optimizer, lr,e
     top5.update(prec5.item(), n)
 
     if step % args.report_freq == 0:
-      logging.info('train %03d %e %f %f', step, objs.avg, top1.avg, top5.avg)
-    print(f'\r\ttrain_{step}@{epoch}:\tloss={objs.avg:.3f}, top1={top1.avg:.3f}, top5={top5.avg:.3f} T={time.time()-t0:.3f}',end="")
+      logging.info('train %03d %.5f %.3f %.3f', step, objs.avg, top1.avg, top5.avg)
+    print(f'\r\ttrain_{step}@{epoch}:\tloss={objs.avg:.3f}, top1={top1.avg:.2f}, top5={top5.avg:.2f} T={time.time()-t0:.1f}\t',end="")
   print(f'train_{epoch}:\tT={time.time()-t0:.3f}')
 
 

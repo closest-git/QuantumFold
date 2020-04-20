@@ -13,15 +13,15 @@ from MixedOp import *
 
 class Cell(nn.Module):
 
-    def __init__(self, steps, multiplier, C_prev_prev, C_prev, C, reduction, reduction_prev):
+    def __init__(self,config, steps, multiplier, C_prev_prev, C_prev, C, reduction, reduction_prev):
         super(Cell, self).__init__()
+        self.config = config
         self.reduction = reduction
 
         if reduction_prev:
             self.preprocess0 = FactorizedReduce(C_prev_prev, C, affine=False)
         else:
-            self.preprocess0 = ReLUConvBN(
-                C_prev_prev, C, 1, 1, 0, affine=False)
+            self.preprocess0 = ReLUConvBN(C_prev_prev, C, 1, 1, 0, affine=False)
         self.preprocess1 = ReLUConvBN(C_prev, C, 1, 1, 0, affine=False)
         self._steps = steps
         self._multiplier = multiplier
@@ -31,13 +31,16 @@ class Cell(nn.Module):
         for i in range(self._steps):
             for j in range(2+i):
                 stride = 2 if reduction and j < 2 else 1
-                op = MixedOp_PCC(C, stride)
+                if self.config.op_struc == "PCC":
+                    op = MixedOp_PCC(C, stride)
+                else:
+                    op = MixedOp(C, stride)
                 self._ops.append(op)
 
         self.weights = None
         self.weights2 = None
         # print(f"{self}")
-
+        
     def forward(self, s0, s1, weights=None, weights2=None):
         if weights is None:
             weights = self.weights
@@ -50,8 +53,10 @@ class Cell(nn.Module):
         states = [s0, s1]
         offset = 0
         for i in range(self._steps):
-            s = sum(weights2[offset+j]*self._ops[offset+j]
-                    (h, weights[offset+j]) for j, h in enumerate(states))
+            if self.config.op_struc == "PCC":
+                s = sum(weights2[offset+j]*self._ops[offset+j](h, weights[offset+j]) for j, h in enumerate(states))
+            else:
+                s = sum(self._ops[offset+j](h, weights[offset+j]) for j, h in enumerate(states))
             offset += len(states)
             states.append(s)
 
@@ -83,8 +88,9 @@ class Cell(nn.Module):
 
 class Network(nn.Module):
 
-    def __init__(self, C, num_classes, layers, criterion, steps=4, multiplier=4, stem_multiplier=3):
+    def __init__(self,config, C, num_classes, layers, criterion, steps=4, multiplier=4, stem_multiplier=3):
         super(Network, self).__init__()
+        self.config = config
         self._C = C
         self._num_classes = num_classes
         self._layers = layers
@@ -110,23 +116,48 @@ class Network(nn.Module):
                 reduction = True
             else:
                 reduction = False
-            cell = Cell(steps, multiplier, C_prev_prev, C_prev,
-                        C_curr, reduction, reduction_prev)
+            cell = Cell(config,steps, multiplier, C_prev_prev, C_prev,C_curr, reduction, reduction_prev)
             reduction_prev = reduction
             self.cells += [cell]
             C_prev_prev, C_prev = C_prev, multiplier*C_curr
 
         self.global_pooling = nn.AdaptiveAvgPool2d(1)
         self.classifier = nn.Linear(C_prev, num_classes)
-
+        #print(self.cells)
         self._initialize_alphas()
 
     def new(self):
-        model_new = Network(self._C, self._num_classes,
-                            self._layers, self._criterion).cuda()
+        model_new = Network(self._C, self._num_classes,self._layers, self._criterion).cuda()
         for x, y in zip(model_new.arch_parameters(), self.arch_parameters()):
             x.data.copy_(y.data)
         return model_new
+
+    def forward_V1(self, input):
+        # t0=time.time()
+        s0 = s1 = self.stem(input)
+        self.UpdateWeights()
+        for i, cell in enumerate(self.cells):
+            s0, s1 = s1, cell(s0, s1)            
+        out = self.global_pooling(s1)
+        logits = self.classifier(out.view(out.size(0), -1))
+        #print(f"Network::forward T={time.time()-t0:.3f}")
+        return logits
+    
+    def forward(self, input):
+        if self.config.op_struc == "PCC":
+            return self.forward_V1(input)
+
+        s0 = s1 = self.stem(input)
+        attention_func=entmax15 #F.softmax
+        for i, cell in enumerate(self.cells):
+            if cell.reduction:
+                weights = attention_func(self.alphas_reduce, dim=-1)
+            else:
+                weights = attention_func(self.alphas_normal, dim=-1)
+            s0, s1 = s1, cell(s0, s1, weights)
+        out = self.global_pooling(s1)
+        logits = self.classifier(out.view(out.size(0),-1))
+        return logits
 
     def forward_v0(self, input):
         s0 = s1 = self.stem(input)
@@ -160,7 +191,7 @@ class Network(nn.Module):
 
     def UpdateWeights(self):
         attention_func = F.softmax
-        contiguous=True
+        contiguous=True     #./dump/conti_1.info,./dump/conti_2.info
         if contiguous:
             a_reduce = self.alphas_reduce.contiguous().view(-1)
             a_normal = self.alphas_normal.contiguous().view(-1)
@@ -199,16 +230,7 @@ class Network(nn.Module):
 
         return 
 
-    def forward(self, input):
-        # t0=time.time()
-        s0 = s1 = self.stem(input)
-        self.UpdateWeights()
-        for i, cell in enumerate(self.cells):
-            s0, s1 = s1, cell(s0, s1)            
-        out = self.global_pooling(s1)
-        logits = self.classifier(out.view(out.size(0), -1))
-        #print(f"Network::forward T={time.time()-t0:.3f}")
-        return logits
+
 
     def _loss(self, input, target):
         logits = self(input)
@@ -219,25 +241,52 @@ class Network(nn.Module):
         k = sum(1 for i in range(self._steps) for n in range(2+i))
         num_ops = len(PRIMITIVES)
 
-        self.alphas_normal = Variable(
-            1e-3*torch.randn(k, num_ops).cuda(), requires_grad=True)
-        self.alphas_reduce = Variable(
-            1e-3*torch.randn(k, num_ops).cuda(), requires_grad=True)
-        self.betas_normal = Variable(
-            1e-3*torch.randn(k).cuda(), requires_grad=True)
-        self.betas_reduce = Variable(
-            1e-3*torch.randn(k).cuda(), requires_grad=True)
+        self.alphas_normal = Variable(1e-3*torch.randn(k, num_ops).cuda(), requires_grad=True)
+        self.alphas_reduce = Variable(1e-3*torch.randn(k, num_ops).cuda(), requires_grad=True)
         self._arch_parameters = [
             self.alphas_normal,
             self.alphas_reduce,
-            self.betas_normal,
-            self.betas_reduce,
         ]
+        if self.config.op_struc == "PCC":
+            self.betas_normal = Variable(1e-3*torch.randn(k).cuda(), requires_grad=True)
+            self.betas_reduce = Variable(1e-3*torch.randn(k).cuda(), requires_grad=True)
+            self._arch_parameters.append(self.betas_normal)
+            self._arch_parameters.append(self.betas_reduce)                
 
     def arch_parameters(self):
         return self._arch_parameters
-
+    
     def genotype(self):
+        def _parse(weights):
+            gene = []
+            n = 2
+            start = 0
+            for i in range(self._steps):
+                end = start + n
+                W = weights[start:end].copy()
+                edges = sorted(range(i + 2), key=lambda x: -max(W[x][k] for k in range(len(W[x])) if k != PRIMITIVES.index('none')))[:2]
+                for j in edges:
+                    k_best = None
+                    for k in range(len(W[j])):
+                        if k != PRIMITIVES.index('none'):
+                            if k_best is None or W[j][k] > W[j][k_best]:
+                                k_best = k
+                    gene.append((PRIMITIVES[k_best], j))
+                start = end
+                n += 1
+            return gene
+
+        gene_normal = _parse(F.softmax(self.alphas_normal, dim=-1).data.cpu().numpy())
+        gene_reduce = _parse(F.softmax(self.alphas_reduce, dim=-1).data.cpu().numpy())
+
+        concat = range(2+self._steps-self._multiplier, self._steps+2)
+        genotype = Genotype(
+            normal=gene_normal, normal_concat=concat,
+            reduce=gene_reduce, reduce_concat=concat
+        )
+        return genotype
+
+    def genotype_v1(self):
 
         def _parse(weights, weights2):
             gene = []

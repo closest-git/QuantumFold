@@ -25,6 +25,7 @@ wheels/
 .installed.cfg
 *.egg
 dump
+net_source
 
 # PyInstaller
 #  Usually these files are written by a python script from a template

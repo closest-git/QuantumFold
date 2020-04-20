@@ -1,7 +1,7 @@
 '''
 @Author: Yingshi Chen
 @Date: 2020-02-14 11:59:10
-@LastEditTime: 2020-04-20 09:56:53
+@LastEditTime: 2020-04-20 15:36:43
 @LastEditors: Please set LastEditors
 @Description: In User Settings Edit
 @FilePath: \QuantumForest\python-package\quantum_forest\QForest.py
@@ -31,7 +31,8 @@ class QuantumFold_config:
         self.plot_train = False
         self.plot_attention = True
 
-        self.op_struc = ""       #"PCC"
+        self.op_struc = "PCC"          #"PCC"
+        self.weights = "share"      #"unique"
         
         self.err_relative = False
         self.task = "train"

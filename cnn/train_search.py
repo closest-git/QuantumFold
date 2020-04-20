@@ -181,7 +181,7 @@ def train(train_queue, valid_queue, model, architect, criterion, optimizer, lr,e
 
     if step % args.report_freq == 0:
       logging.info('train %03d %.5f %.3f %.3f', step, objs.avg, top1.avg, top5.avg)
-    print(f'\r\ttrain_{step}@{epoch}:\tloss={objs.avg:.3f}, top1={top1.avg:.2f}, top5={top5.avg:.2f} T={time.time()-t0:.1f}\t',end="")
+    print(f'\r\t{model.title}_{step}@{epoch}:\tloss={objs.avg:.3f}, top1={top1.avg:.2f}, top5={top5.avg:.2f} T={time.time()-t0:.1f}\t',end="")
   print(f'train_{epoch}:\tT={time.time()-t0:.3f}')
 
 
@@ -189,27 +189,30 @@ def train(train_queue, valid_queue, model, architect, criterion, optimizer, lr,e
 
 
 def infer(valid_queue, model, criterion):
+  if torch.cuda.is_available():   
+    torch.cuda.empty_cache()
   objs = utils.AvgrageMeter()
   top1 = utils.AvgrageMeter()
   top5 = utils.AvgrageMeter()
   model.eval()
   t0=time.time()
-  for step, (input, target) in enumerate(valid_queue):
-    input = Variable(input, volatile=True).cuda()
-    target = Variable(target, volatile=True).cuda()
+  with torch.no_grad():
+    for step, (input, target) in enumerate(valid_queue):
+      input = Variable(input).cuda()
+      target = Variable(target).cuda()
 
-    logits = model(input)
-    loss = criterion(logits, target)
+      logits = model(input)
+      loss = criterion(logits, target)
 
-    prec1, prec5 = utils.accuracy(logits, target, topk=(1, 5))
-    n = input.size(0)
-    objs.update(loss.item(), n)
-    top1.update(prec1.item(), n)
-    top5.update(prec5.item(), n)
+      prec1, prec5 = utils.accuracy(logits, target, topk=(1, 5))
+      n = input.size(0)
+      objs.update(loss.item(), n)
+      top1.update(prec1.item(), n)
+      top5.update(prec5.item(), n)
 
-    if step % args.report_freq == 0:
-      #logging.info('valid %03d %e %f %f', step, objs.avg, top1.avg, top5.avg)
-      print(f'\r\tvalid {step}:\t{objs.avg:.3f}, {top1.avg:.3f}, {top5.avg:.3f}',end="")
+      if step % args.report_freq == 0:
+        #logging.info('valid %03d %e %f %f', step, objs.avg, top1.avg, top5.avg)
+        print(f'\r\tvalid {step}:\t{objs.avg:.3f}, {top1.avg:.3f}, {top5.avg:.3f}',end="")
   print(f'\tinfer_:\tT={time.time()-t0:.3f}')
 
 

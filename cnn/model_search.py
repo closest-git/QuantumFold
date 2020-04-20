@@ -8,83 +8,7 @@ from genotypes import PRIMITIVES
 from genotypes import Genotype
 import time
 from MixedOp import *
-
-
-
-class Cell(nn.Module):
-
-    def __init__(self,config, steps, multiplier, C_prev_prev, C_prev, C, reduction, reduction_prev):
-        super(Cell, self).__init__()
-        self.config = config
-        self.reduction = reduction
-
-        if reduction_prev:
-            self.preprocess0 = FactorizedReduce(C_prev_prev, C, affine=False)
-        else:
-            self.preprocess0 = ReLUConvBN(C_prev_prev, C, 1, 1, 0, affine=False)
-        self.preprocess1 = ReLUConvBN(C_prev, C, 1, 1, 0, affine=False)
-        self._steps = steps
-        self._multiplier = multiplier
-
-        self._ops = nn.ModuleList()
-        self._bns = nn.ModuleList()
-        for i in range(self._steps):
-            for j in range(2+i):
-                stride = 2 if reduction and j < 2 else 1
-                if self.config.op_struc == "PCC":
-                    op = MixedOp_PCC(C, stride)
-                else:
-                    op = MixedOp(C, stride)
-                self._ops.append(op)
-
-        self.weights = None
-        self.weights2 = None
-        # print(f"{self}")
-        
-    def forward(self, s0, s1, weights=None, weights2=None):
-        if weights is None:
-            weights = self.weights
-        if weights2 is None:
-            weights2 = self.weights2
-
-        s0 = self.preprocess0(s0)
-        s1 = self.preprocess1(s1)
-
-        states = [s0, s1]
-        offset = 0
-        for i in range(self._steps):
-            if self.config.op_struc == "PCC":
-                s = sum(weights2[offset+j]*self._ops[offset+j](h, weights[offset+j]) for j, h in enumerate(states))
-            else:
-                s = sum(self._ops[offset+j](h, weights[offset+j]) for j, h in enumerate(states))
-            offset += len(states)
-            states.append(s)
-
-        return torch.cat(states[-self._multiplier:], dim=1)
-    
-    def UpdateAttention(self,alpha,beta):
-        if self.reduction:
-            weights = self.attention_func(self.alphas_reduce, dim=-1)
-            n = 3
-            start = 2
-            weights2 = self.attention_func(self.betas_reduce[0:2], dim=-1)
-            for i in range(self._steps-1):
-                end = start + n
-                tw2 = self.attention_func(self.betas_reduce[start:end], dim=-1)
-                start = end
-                n += 1
-                weights2 = torch.cat([weights2, tw2], dim=0)
-        else:
-            weights = self.attention_func(self.alphas_normal, dim=-1)
-            n = 3
-            start = 2
-            weights2 = self.attention_func(self.betas_normal[0:2], dim=-1)
-            for i in range(self._steps-1):
-                end = start + n
-                tw2 = self.attention_func(self.betas_normal[start:end], dim=-1)
-                start = end
-                n += 1
-                weights2 = torch.cat([weights2, tw2], dim=0)
+from Cell import *
 
 class Network(nn.Module):
 
@@ -97,7 +21,7 @@ class Network(nn.Module):
         self._criterion = criterion
         self._steps = steps     #number of nodes in each cell
         self._multiplier = multiplier
-        self.attention_func = F.softmax  # 
+        #self.attention_func = F.softmax  # 
         #self.attention_func = entmax15      #有意思，差不多
         #self.attention_func = lambda x,dim: x
 
@@ -125,6 +49,8 @@ class Network(nn.Module):
         self.classifier = nn.Linear(C_prev, num_classes)
         #print(self.cells)
         self._initialize_alphas()
+        self.title = f"\"{self.config.weights}_{self.config.op_struc}\""
+        print("")
 
     def new(self):
         model_new = Network(self._C, self._num_classes,self._layers, self._criterion).cuda()
@@ -191,7 +117,7 @@ class Network(nn.Module):
 
     def UpdateWeights(self):
         attention_func = F.softmax
-        contiguous=True     #./dump/conti_1.info,./dump/conti_2.info
+        contiguous = False     #./dump/conti_1.info,./dump/conti_2.info
         if contiguous:
             a_reduce = self.alphas_reduce.contiguous().view(-1)
             a_normal = self.alphas_normal.contiguous().view(-1)
@@ -240,9 +166,13 @@ class Network(nn.Module):
         k = sum(2+i for i in range(self._steps) )
         k = sum(1 for i in range(self._steps) for n in range(2+i))
         num_ops = len(PRIMITIVES)
-
-        self.alphas_normal = Variable(1e-3*torch.randn(k, num_ops).cuda(), requires_grad=True)
-        self.alphas_reduce = Variable(1e-3*torch.randn(k, num_ops).cuda(), requires_grad=True)
+        nCell = len(self.cells)
+        if self.config.weights == "share":
+            shape = (k, num_ops)
+        else:
+            shape = (nCell,k, num_ops)
+        self.alphas_normal = Variable(1e-3*torch.randn(shape).cuda(), requires_grad=True)
+        self.alphas_reduce = Variable(1e-3*torch.randn(shape).cuda(), requires_grad=True)
         self._arch_parameters = [
             self.alphas_normal,
             self.alphas_reduce,

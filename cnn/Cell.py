@@ -24,15 +24,16 @@ class Cell(nn.Module):
         def __init__(self,config, nOP,nNode):
             self.config = config
             self.nNode=nNode
+            self.hasBeta = self.config.op_struc == "PCC" or  self.config.op_struc == "pair"
             k = sum(1 for i in range(self.nNode) for n in range(2+i))
             self.alphas_ = Variable(1e-3*torch.randn((k,nOP)).cuda(), requires_grad=True)
-            if self.config.op_struc == "PCC":
+            if self.hasBeta:
                 self.betas_ = Variable(1e-3*torch.randn(k).cuda(), requires_grad=True)
             
 
         def get_weight(self):
             w_a,w_b = F.softmax(self.alphas_, dim=-1),None
-            if self.config.op_struc == "PCC":
+            if self.hasBeta:
                 n = 3
                 start = 2
                 weights2 = F.softmax(self.betas_[0:2], dim=-1)
@@ -48,7 +49,7 @@ class Cell(nn.Module):
             return [w_a,w_b]
         
         def get_param(self):
-            if self.config.op_struc == "PCC":
+            if self.hasBeta:
                 return [self.alphas_,self.betas_]
             else:
                 return [self.alphas_]
@@ -74,9 +75,12 @@ class Cell(nn.Module):
                 stride = 2 if reduction and j < 2 else 1
                 if self.config.op_struc == "PCC":
                     op = MixedOp_PCC(C, stride)
+                elif self.config.op_struc == "pair":
+                    op = MixedOp_pair(C, stride)
                 else:
                     op = MixedOp(C, stride)
                     #op = BinaryOP(C, stride)
+                op.config = config
                 self._ops.append(op)
 
         
@@ -99,7 +103,7 @@ class Cell(nn.Module):
                 no = random.sample(range(len(states)), 1)[0]
                 s = self._ops[offset+no](states[no], weights[offset+no]) 
             else:
-                if self.config.op_struc == "PCC":
+                if weights2 is not None:
                     s = sum(weights2[offset+j]*self._ops[offset+j](h, weights[offset+j]) for j, h in enumerate(states))
                 else:
                     s = sum(self._ops[offset+j](h, weights[offset+j]) for j, h in enumerate(states))

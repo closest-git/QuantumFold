@@ -1,13 +1,14 @@
 '''
 @Author: Yingshi Chen
 @Date: 2020-02-14 11:59:10
-@LastEditTime: 2020-04-21 09:47:09
+@LastEditTime: 2020-04-21 15:02:42
 @LastEditors: Please set LastEditors
 @Description: In User Settings Edit
 @FilePath: \QuantumForest\python-package\quantum_forest\QForest.py
 '''
 class QuantumFold_config:
     def __init__(self,data,random_seed=42):
+    
         self.model = "QuantumFold_cnn"
         #self.tree_type = tree_type
         # self.data = data
@@ -31,11 +32,13 @@ class QuantumFold_config:
         self.plot_train = False
         self.plot_attention = True
 
-        self.op_struc = "PCC"           #"PCC"
+        self.op_struc = "PCC"           #"PCC" "darts" "pair"
         self.weights = "cys"         
         
         self.err_relative = False
         self.task = "train"
+        #stat
+        self.tX = 0
 
         if self.data_set=="cifar10":
             pass

@@ -19,6 +19,17 @@ OPS = {
     ),
 }
 
+OPS_element = {
+  'none' : lambda C, stride, affine: Zero(stride),
+  'avg_pool_3x3' : lambda C, stride, affine: nn.AvgPool2d(3, stride=stride, padding=1, count_include_pad=False),
+  'max_pool_3x3' : lambda C, stride, affine: nn.MaxPool2d(3, stride=stride, padding=1),
+  'skip_connect' : lambda C, stride, affine: Identity() if stride == 1 else FactorizedReduce(C, C, affine=affine),
+  'ReLU' : lambda C, stride, affine: nn.ReLU(inplace=False),
+  'BatchNorm2d' : lambda C, stride, affine: nn.BatchNorm2d(C, affine=affine),
+  'Conv2d_3' : lambda C, stride, affine: nn.Conv2d(C, C, 3, stride,padding=2, dilation=2, groups=C, bias=False),
+  'Conv2d_5' : lambda C, stride, affine: nn.Conv2d(C, C, 5, stride,padding=4, dilation=2, groups=C, bias=False),
+}
+
 class ReLUConvBN(nn.Module):
 
   def __init__(self, C_in, C_out, kernel_size, stride, padding, affine=True):
@@ -37,7 +48,6 @@ class ReLUConvBN(nn.Module):
   
   def __repr__(self):
     return self.desc
-
 
 class DilConv(nn.Module):
     

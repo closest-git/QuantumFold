@@ -76,7 +76,7 @@ class Network(nn.Module):
         return logits
     
     def forward(self, input):
-        if self.config.op_struc == "PCC":
+        if self.config.op_struc != "darts":
             return self.forward_V1(input)
 
         s0 = s1 = self.stem(input)
@@ -135,7 +135,6 @@ class Network(nn.Module):
             a_reduce = attention_func(self.alphas_reduce, dim=-1)
             a_normal = attention_func(self.alphas_normal, dim=-1)
 
-        isB_1=False
         for i, cell in enumerate(self.cells):
             if cell.reduction:
                 cell.weights = a_reduce 
@@ -143,19 +142,17 @@ class Network(nn.Module):
             else:
                 cell.weights = a_normal 
                 beta = self.betas_normal
-            if isB_1:
-                cell.weights2 = attention_func(beta, dim=-1)
-            else:
-                n = 3
-                start = 2
-                weights2 = F.softmax(beta[0:2], dim=-1)
-                for i in range(self._steps-1):
-                    end = start + n
-                    tw2 = F.softmax(beta[start:end], dim=-1)
-                    start = end
-                    n += 1
-                    weights2 = torch.cat([weights2,tw2],dim=0)
-                cell.weights2 = weights2
+            
+            n = 3
+            start = 2
+            weights2 = F.softmax(beta[0:2], dim=-1)
+            for i in range(self._steps-1):
+                end = start + n
+                tw2 = F.softmax(beta[start:end], dim=-1)
+                start = end
+                n += 1
+                weights2 = torch.cat([weights2,tw2],dim=0)
+            cell.weights2 = weights2
 
         #a_reduce = self.attention_func(self.alphas_reduce, dim=-1)
         #a_normal = self.attention_func(self.alphas_normal, dim=-1)
@@ -179,7 +176,7 @@ class Network(nn.Module):
             self.alphas_normal,
             self.alphas_reduce,
         ]
-        if self.config.op_struc == "PCC":
+        if self.config.op_struc != "darts":
             self.betas_normal = Variable(1e-3*torch.randn(k).cuda(), requires_grad=True)
             self.betas_reduce = Variable(1e-3*torch.randn(k).cuda(), requires_grad=True)
             self._arch_parameters.append(self.betas_normal)
@@ -187,18 +184,25 @@ class Network(nn.Module):
 
     def _initialize_weights(self):
         self._arch_parameters=[]
+        isShare = True
         nOP,nNode = len(PRIMITIVES),sum(1 for i in range(self._steps) for n in range(2+i))
-        w_normal = Cell.OP_weights(self.config,nOP,self._steps)
-        w_reduce = Cell.OP_weights(self.config,nOP,self._steps)
-        self._arch_parameters.extend(w_normal.get_param())
-        self._arch_parameters.extend(w_reduce.get_param())
-        for i, cell in enumerate(self.cells):
-            if cell.reduction:
-                cell.weight = w_normal
+        if isShare:
+            w_normal = Cell.OP_weights(self.config,nOP,self._steps)
+            w_reduce = Cell.OP_weights(self.config,nOP,self._steps)
+            self._arch_parameters.extend(w_normal.get_param())
+            self._arch_parameters.extend(w_reduce.get_param())
+        nReduct,nNormal=0,0
+        for i, cell in enumerate(self.cells):   
+            if not isShare:
+                w_cell = Cell.OP_weights(self.config,nOP,self._steps)
+                self._arch_parameters.extend(w_cell.get_param())
+            if cell.reduction:                
+                cell.weight = w_reduce if isShare else w_cell
+                nReduct=nReduct+1
             else:
-                cell.weight = w_reduce
-        print(f"======{self._arch_parameters}")
-                          
+                cell.weight = w_normal if isShare else w_cell
+                nNormal=nNormal+1
+        print(f"====== _arch_parameters={len(self._arch_parameters)} nReduct={nReduct} nNormal={nNormal}")                          
 
     def arch_parameters(self):
         nzParam = sum(p.numel() for p in self._arch_parameters)

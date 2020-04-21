@@ -48,7 +48,10 @@ class Network(nn.Module):
         self.global_pooling = nn.AdaptiveAvgPool2d(1)
         self.classifier = nn.Linear(C_prev, num_classes)
         #print(self.cells)
-        self._initialize_alphas()
+        if self.config.weights=="cys":
+            self._initialize_weights()
+        else:
+            self._initialize_alphas()
         self.title = f"\"{self.config.weights}_{self.config.op_struc}\""
         print("")
 
@@ -61,7 +64,10 @@ class Network(nn.Module):
     def forward_V1(self, input):
         # t0=time.time()
         s0 = s1 = self.stem(input)
-        self.UpdateWeights()
+        if self.config.weights == "cys":
+            pass
+        else: 
+            self.UpdateWeights()
         for i, cell in enumerate(self.cells):
             s0, s1 = s1, cell(s0, s1)            
         out = self.global_pooling(s1)
@@ -132,10 +138,10 @@ class Network(nn.Module):
         isB_1=False
         for i, cell in enumerate(self.cells):
             if cell.reduction:
-                cell.weights = a_reduce   
+                cell.weights = a_reduce 
                 beta = self.betas_reduce
             else:
-                cell.weights = a_normal
+                cell.weights = a_normal 
                 beta = self.betas_normal
             if isB_1:
                 cell.weights2 = attention_func(beta, dim=-1)
@@ -167,12 +173,8 @@ class Network(nn.Module):
         k = sum(1 for i in range(self._steps) for n in range(2+i))
         num_ops = len(PRIMITIVES)
         nCell = len(self.cells)
-        if self.config.weights == "share":
-            shape = (k, num_ops)
-        else:
-            shape = (nCell,k, num_ops)
-        self.alphas_normal = Variable(1e-3*torch.randn(shape).cuda(), requires_grad=True)
-        self.alphas_reduce = Variable(1e-3*torch.randn(shape).cuda(), requires_grad=True)
+        self.alphas_normal = Variable(1e-3*torch.randn(k, num_ops).cuda(), requires_grad=True)
+        self.alphas_reduce = Variable(1e-3*torch.randn(k, num_ops).cuda(), requires_grad=True)
         self._arch_parameters = [
             self.alphas_normal,
             self.alphas_reduce,
@@ -181,12 +183,29 @@ class Network(nn.Module):
             self.betas_normal = Variable(1e-3*torch.randn(k).cuda(), requires_grad=True)
             self.betas_reduce = Variable(1e-3*torch.randn(k).cuda(), requires_grad=True)
             self._arch_parameters.append(self.betas_normal)
-            self._arch_parameters.append(self.betas_reduce)                
+            self._arch_parameters.append(self.betas_reduce)  
+
+    def _initialize_weights(self):
+        self._arch_parameters=[]
+        nOP,nNode = len(PRIMITIVES),sum(1 for i in range(self._steps) for n in range(2+i))
+        w_normal = Cell.OP_weights(self.config,nOP,self._steps)
+        w_reduce = Cell.OP_weights(self.config,nOP,self._steps)
+        self._arch_parameters.extend(w_normal.get_param())
+        self._arch_parameters.extend(w_reduce.get_param())
+        for i, cell in enumerate(self.cells):
+            if cell.reduction:
+                cell.weight = w_normal
+            else:
+                cell.weight = w_reduce
+        print(f"======{self._arch_parameters}")
+                          
 
     def arch_parameters(self):
+        nzParam = sum(p.numel() for p in self._arch_parameters)
         return self._arch_parameters
     
     def genotype(self):
+        return ""
         def _parse(weights):
             gene = []
             n = 2

@@ -15,12 +15,49 @@ from genotypes import PRIMITIVES
 from genotypes import Genotype
 import time
 from MixedOp import *
+from torch.autograd import Variable
+
 
 class Cell(nn.Module):
+    #多个cell之间可共用weight!!!
+    class OP_weights(object):
+        def __init__(self,config, nOP,nNode):
+            self.config = config
+            self.nNode=nNode
+            k = sum(1 for i in range(self.nNode) for n in range(2+i))
+            self.alphas_ = Variable(1e-3*torch.randn((k,nOP)).cuda(), requires_grad=True)
+            if self.config.op_struc == "PCC":
+                self.betas_ = Variable(1e-3*torch.randn(k).cuda(), requires_grad=True)
+            
+
+        def get_weight(self):
+            w_a,w_b = F.softmax(self.alphas_, dim=-1),None
+            if self.config.op_struc == "PCC":
+                n = 3
+                start = 2
+                weights2 = F.softmax(self.betas_[0:2], dim=-1)
+                for i in range(self.nNode-1):
+                    end = start + n
+                    tw2 = F.softmax(self.betas_[start:end], dim=-1)
+                    start = end
+                    n += 1
+                    weights2 = torch.cat([weights2,tw2],dim=0)
+                assert end==len(self.betas_)
+                w_b = weights2                
+                            
+            return [w_a,w_b]
+        
+        def get_param(self):
+            if self.config.op_struc == "PCC":
+                return [self.alphas_,self.betas_]
+            else:
+                return [self.alphas_]
+
     def __init__(self,config, steps, multiplier, C_prev_prev, C_prev, C, reduction, reduction_prev):
         super(Cell, self).__init__()
         self.config = config
         self.reduction = reduction
+        self.weight=None
 
         if reduction_prev:
             self.preprocess0 = FactorizedReduce(C_prev_prev, C, affine=False)
@@ -42,15 +79,15 @@ class Cell(nn.Module):
                     #op = BinaryOP(C, stride)
                 self._ops.append(op)
 
-        self.weights = None
-        self.weights2 = None
-        # print(f"{self}")
         
     def forward(self, s0, s1, weights=None, weights2=None):
-        if weights is None:
-            weights = self.weights
-        if weights2 is None:
-            weights2 = self.weights2
+        if self.config.weights == "cys":
+            [weights,weights2] = self.weight.get_weight()
+        else:
+            if weights is None:
+                weights = self.weights
+            if weights2 is None:
+                weights2 = self.weights2
 
         s0 = self.preprocess0(s0)
         s1 = self.preprocess1(s1)

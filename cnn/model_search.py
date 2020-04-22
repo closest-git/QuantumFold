@@ -52,7 +52,7 @@ class Network(nn.Module):
             self._initialize_weights()
         else:
             self._initialize_alphas()
-        self.title = f"\"{self.config.weights}_{self.config.op_struc}\""
+        self.title = f"\"{self.config.weights}_{self.config.op_struc}_{self.config.primitive}\""
         print("")
 
     def new(self):
@@ -64,10 +64,8 @@ class Network(nn.Module):
     def forward_V1(self, input):
         # t0=time.time()
         s0 = s1 = self.stem(input)
-        if self.config.weights == "cys":
-            pass
-        else: 
-            self.UpdateWeights()
+ 
+        self.UpdateWeights()
         for i, cell in enumerate(self.cells):
             s0, s1 = s1, cell(s0, s1)            
         out = self.global_pooling(s1)
@@ -80,13 +78,16 @@ class Network(nn.Module):
             return self.forward_V1(input)
 
         s0 = s1 = self.stem(input)
-        attention_func=entmax15 #F.softmax
+        self.UpdateWeights()
+        attention_func= F.softmax       #entmax15
         for i, cell in enumerate(self.cells):
-            if cell.reduction:
-                weights = attention_func(self.alphas_reduce, dim=-1)
-            else:
-                weights = attention_func(self.alphas_normal, dim=-1)
-            s0, s1 = s1, cell(s0, s1, weights)
+            if False:
+                if cell.reduction:
+                    weights = attention_func(self.alphas_reduce, dim=-1)
+                else:
+                    weights = attention_func(self.alphas_normal, dim=-1)
+                s0, s1 = s1, cell(s0, s1, weights)
+            s0, s1 = s1, cell(s0, s1)
         out = self.global_pooling(s1)
         logits = self.classifier(out.view(out.size(0),-1))
         return logits
@@ -122,6 +123,9 @@ class Network(nn.Module):
         return logits
 
     def UpdateWeights(self):
+        if self.config.weights == "cys":
+            return
+
         attention_func = F.softmax
         contiguous = False     #./dump/conti_1.info,./dump/conti_2.info
         if contiguous:
@@ -156,10 +160,7 @@ class Network(nn.Module):
 
         #a_reduce = self.attention_func(self.alphas_reduce, dim=-1)
         #a_normal = self.attention_func(self.alphas_normal, dim=-1)
-
         return 
-
-
 
     def _loss(self, input, target):
         logits = self(input)

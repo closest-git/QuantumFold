@@ -5,6 +5,9 @@ OPS = {
   'none' : lambda C, stride, affine: Zero(stride),
   'avg_pool_3x3' : lambda C, stride, affine: nn.AvgPool2d(3, stride=stride, padding=1, count_include_pad=False),
   'max_pool_3x3' : lambda C, stride, affine: nn.MaxPool2d(3, stride=stride, padding=1),
+  'global_pool' : lambda C, stride, affine: nn.Sequential(
+      nn.AdaptiveAvgPool2d(output_size=(None,None)),Identity_Stride_(stride)
+    ),
   'skip_connect' : lambda C, stride, affine: Identity() if stride == 1 else FactorizedReduce(C, C, affine=affine),
   'sep_conv_3x3' : lambda C, stride, affine: SepConv(C, C, 3, stride, 1, affine=affine),
   'sep_conv_5x5' : lambda C, stride, affine: SepConv(C, C, 5, stride, 2, affine=affine),
@@ -17,18 +20,34 @@ OPS = {
     nn.Conv2d(C, C, (7,1), stride=(stride, 1), padding=(3, 0), bias=False),
     nn.BatchNorm2d(C, affine=affine)
     ),
+  'ReLU' : lambda C, stride, affine: nn.Sequential(
+      nn.ReLU(inplace=False),
+      Identity_Stride_(stride)
+    ),
+  'Identity' : lambda C, stride, affine: Identity_Stride_(stride),
+  'BatchNorm2d' : lambda C, stride, affine: nn.Sequential(
+      nn.BatchNorm2d(C, affine=affine),
+      Identity_Stride_(stride)
+    ),
+  'Conv2d_3' : lambda C, stride, affine: nn.Conv2d(C, C, 3, stride,padding=1,   bias=False),
+  'Conv2d_5' : lambda C, stride, affine: nn.Conv2d(C, C, 5, stride,padding=2,   bias=False),
+  'Conv2d_32' : lambda C, stride, affine: nn.Conv2d(C, C, 3, stride,padding=2, dilation=2, groups=C, bias=False),
+  'Conv2d_52' : lambda C, stride, affine: nn.Conv2d(C, C, 5, stride,padding=4, dilation=2, groups=C, bias=False),
+  'ConvX_5' : lambda C, stride, affine: nn.Sequential(
+    nn.Conv2d(C, C, (1,7), stride=(1, stride), padding=(0, 3), bias=False),
+    nn.MaxPool2d(3, stride=stride, padding=1),
+  ),
+  'ConvY_5' : lambda C, stride, affine: nn.Conv2d(C, C, (7,1), stride=(stride, 1), padding=(3, 0), bias=False),
+  'conv_7x1_1x7' : lambda C, stride, affine: nn.Sequential(
+    nn.Conv2d(C, C, (1,7), stride=(1, stride), padding=(0, 3), bias=False),
+    nn.Conv2d(C, C, (7,1), stride=(stride, 1), padding=(3, 0), bias=False),
+    ),
+  'conv_5x1_1x5' : lambda C, stride, affine: nn.Sequential(
+    nn.Conv2d(C, C, (1,5), stride=(1, stride), padding=(0, 2), bias=False),
+    nn.Conv2d(C, C, (5,1), stride=(stride, 1), padding=(2, 0), bias=False),
+    ),
 }
 
-OPS_element = {
-  'none' : lambda C, stride, affine: Zero(stride),
-  'avg_pool_3x3' : lambda C, stride, affine: nn.AvgPool2d(3, stride=stride, padding=1, count_include_pad=False),
-  'max_pool_3x3' : lambda C, stride, affine: nn.MaxPool2d(3, stride=stride, padding=1),
-  'skip_connect' : lambda C, stride, affine: Identity() if stride == 1 else FactorizedReduce(C, C, affine=affine),
-  'ReLU' : lambda C, stride, affine: nn.ReLU(inplace=False),
-  'BatchNorm2d' : lambda C, stride, affine: nn.BatchNorm2d(C, affine=affine),
-  'Conv2d_3' : lambda C, stride, affine: nn.Conv2d(C, C, 3, stride,padding=2, dilation=2, groups=C, bias=False),
-  'Conv2d_5' : lambda C, stride, affine: nn.Conv2d(C, C, 5, stride,padding=4, dilation=2, groups=C, bias=False),
-}
 
 class ReLUConvBN(nn.Module):
 
@@ -67,7 +86,7 @@ class DilConv(nn.Module):
   def __repr__(self):
     return self.desc
 
-
+#'ConvY_5' : lambda C, stride, affine: nn.Conv2d(C, C, (7,1), stride=(stride, 1), padding=(3, 0), bias=False),
 class SepConv(nn.Module):
     
   def __init__(self, C_in, C_out, kernel_size, stride, padding, affine=True):
@@ -99,6 +118,15 @@ class Identity(nn.Module):
   def forward(self, x):
     return x
 
+class Identity_Stride_(nn.Module):
+  def __init__(self, stride):
+    super(Identity_Stride_, self).__init__()
+    self.stride = stride
+
+  def forward(self, x):
+    if self.stride == 1:
+      return x
+    return x[:,:,::self.stride,::self.stride]
 
 class Zero(nn.Module):
 
@@ -110,6 +138,8 @@ class Zero(nn.Module):
     if self.stride == 1:
       return x.mul(0.)
     return x[:,:,::self.stride,::self.stride].mul(0.)
+
+
 
 
 class FactorizedReduce(nn.Module):

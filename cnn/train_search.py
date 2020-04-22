@@ -180,8 +180,8 @@ def train(train_queue, valid_queue, model, architect, criterion, optimizer, lr, 
     top1 = utils.AvgrageMeter()
     top5 = utils.AvgrageMeter()
     tX,t0 = 0,time.time()
+    best_prec = 0
     for step, (input, target) in enumerate(train_queue):
-        
         model.train()
         n = input.size(0)
         input = Variable(input, requires_grad=False).cuda()
@@ -205,6 +205,7 @@ def train(train_queue, valid_queue, model, architect, criterion, optimizer, lr, 
         optimizer.step()
         tX += time.time()-t1
         prec1, prec5 = utils.accuracy(logits, target, topk=(1, 5))
+        best_prec = max(best_prec,prec1.item())
         objs.update(loss.item(), n)
         top1.update(prec1.item(), n)
         top5.update(prec5.item(), n)
@@ -213,7 +214,7 @@ def train(train_queue, valid_queue, model, architect, criterion, optimizer, lr, 
             logging.info('train %03d %.5f %.3f %.3f', step,objs.avg, top1.avg, top5.avg)
         
         print(f'\r\t{model.title}_{step}@{epoch}:\tloss={objs.avg:.3f}, top1={top1.avg:.2f}, top5={top5.avg:.2f} T={time.time()-t0:.1f}({tX:.3f})\t', end="")
-    print(f'train_{epoch}:\tT={time.time()-t0:.3f}')
+    print(f'train_{epoch}:best_prec={best_prec}\tT={time.time()-t0:.3f}')
 
     return top1.avg, objs.avg
 

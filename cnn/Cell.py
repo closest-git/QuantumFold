@@ -74,13 +74,13 @@ class Cell(nn.Module):
             for j in range(2+i):
                 stride = 2 if reduction and j < 2 else 1
                 if self.config.op_struc == "PCC":
-                    op = MixedOp_PCC(C, stride)
+                    op = MixedOp_PCC(config,C, stride)
                 elif self.config.op_struc == "pair":
-                    op = MixedOp_pair(C, stride)
+                    op = MixedOp_pair(config,C, stride)
                 else:
-                    op = MixedOp(C, stride)
+                    op = MixedOp(config,C, stride)
                     #op = BinaryOP(C, stride)
-                op.config = config
+
                 self._ops.append(op)
 
         

@@ -37,12 +37,19 @@ def channel_shuffle(x, groups):
 
 class MixedOp(nn.Module):
 
-    def __init__(self, C, stride):
+    def __init__(self,config, C, stride):
         super(MixedOp, self).__init__()
         self._ops = nn.ModuleList()
-        for primitive in PRIMITIVES:
+        self.config = config
+        if config.primitive == "atom":
+            PRIMITIVES_pool = ['none','max_pool_3x3','avg_pool_3x3','Identity','BatchNorm2d','ReLU','Conv2d_3','Conv2d_5']
+            PRIMITIVES_pool = ['none','max_pool_3x3','Identity','BatchNorm2d','ReLU','Conv2d_3','Conv2d_5','global_pool']
+        else:         
+            PRIMITIVES_pool = PRIMITIVES
+
+        for primitive in PRIMITIVES_pool:
             op = OPS[primitive](C, stride, False)
-            if 'pool' in primitive:
+            if 'pool' in primitive and config.primitive != "atom":
                 op = nn.Sequential(op, nn.BatchNorm2d(C, affine=False))
             self._ops.append(op)
         nOP = len(self._ops)
@@ -68,19 +75,22 @@ class BinaryOP(MixedOp):
         #return sum(w * op(x) for w, op in zip(weights, self._ops))
 
 class MixedOp_pair(nn.Module):
-    def __init__(self, C, stride):
+    def __init__(self,config, C, stride):
         super(MixedOp_pair, self).__init__()
         self._ops = nn.ModuleList()
         self.mp = nn.MaxPool2d(2, 2)
-        self.nCand = 2      #C//4相比 差不多
+        self.nCand = C//4      #不能取2，极不稳定
+        self.config = config
         
-        self.isShuffle = True
-        PRIMITIVES_pool = PRIMITIVES
-        #PRIMITIVES_pool = OPS_element
+        self.isShuffle = True    
+        if config.primitive == "atom":
+            PRIMITIVES_pool = ['none','max_pool_3x3','avg_pool_3x3','Identity','BatchNorm2d','ReLU','Conv2d_3','Conv2d_5']
+        else:         
+            PRIMITIVES_pool = PRIMITIVES
+        
         for primitive in PRIMITIVES_pool:
             op = OPS[primitive](self.nCand, stride, False)
-            if 'pool' in primitive:
-                op = nn.Sequential(op, nn.BatchNorm2d(self.nCand, affine=False))
+            #if 'pool' in primitive:            op = nn.Sequential(op, nn.BatchNorm2d(self.nCand, affine=False))
             self._ops.append(op)
         nOP = len(self._ops)
         self.desc = f"MixedOp{self.nCand}_{nOP}_C{C}_stride{stride}"
@@ -103,7 +113,7 @@ class MixedOp_pair(nn.Module):
         temp1 = sum(w * op(xtemp) for w, op in zip(weights, self._ops))        
         # temp1 = 0
         # for w, op in zip(weights, self._ops):
-        #     #print(f"w={w.item()} op={op} xtemp={xtemp.shape}")
+        #     print(f"w={w.item()} op={op} xtemp={xtemp.shape}")
         #     temp1 = temp1 + w * op(xtemp)
         
         #reduction cell needs pooling before concat
@@ -119,10 +129,11 @@ class MixedOp_pair(nn.Module):
 # PARTIAL CHANNEL CONNECTIONS FOR M EMORY -E FFICIENT A RCHITECTURE S EARCH
 class MixedOp_PCC(nn.Module):
 
-    def __init__(self, C, stride):
+    def __init__(self,config, C, stride):
         super(MixedOp_PCC, self).__init__()
         self._ops = nn.ModuleList()
         self.mp = nn.MaxPool2d(2, 2)
+        self.config = config
 
         for primitive in PRIMITIVES:
             op = OPS[primitive](C // 4, stride, False)

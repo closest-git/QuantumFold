@@ -135,5 +135,38 @@ class Cell(nn.Module):
                 start = end
                 n += 1
                 weights2 = torch.cat([weights2, tw2], dim=0)
+    
+    def weight2gene(self):
+        [weights,weights2] = self.weight.get_weight()
+        weights = weights.detach().cpu().numpy()
+        if weights2 is not None:
+            weights2 = weights2.detach().cpu().numpy()
+        PRIMITIVES_pool = self.config.PRIMITIVES_pool
+        gene = []
+        n = 2   #2,3,4,5... number of edges
+        start = 0
+        none_index = PRIMITIVES.index('none')
+        for i in range(self._steps):
+            end = start + n
+            W = weights[start:end].copy()
+            if weights2 is not None:
+                W2 = weights2[start:end].copy()
+                for j in range(n):
+                    W[j, :] = W[j, :]*W2[j]
+            edges,cur_gene = [],[]
+            for edge in range(n):
+                print(W[edge])
+                cur_nz = len(W[edge])
+                k_sort = sorted(range(cur_nz), key=lambda k:W[edge][k])
+                k_sort.remove(none_index)
+                k_best = k_sort[cur_nz-2]
+                cur_min, cur_max = W[edge][k_sort[0]], W[edge][k_best]
+                edges.append(-cur_max)
+                cur_gene.append((PRIMITIVES[k_best], edge))
+            edges = sorted(range(n), key=lambda k:edges[k]) #Default is ascending
+            gene.extend([cur_gene[edges[0]], cur_gene[edges[1]]])
+            start = end
+            n += 1
+        return gene
 
 

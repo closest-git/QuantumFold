@@ -4,6 +4,7 @@ import sys
 import time
 import glob
 import numpy as np
+np.set_printoptions(linewidth=np.inf)
 import torch
 import utils
 import logging
@@ -21,50 +22,32 @@ from some_utils import *
 from architect import Architect
 from model_search import Network
 from torch.autograd import Variable
+from Visualizing import *
 
 parser = argparse.ArgumentParser("cifar")
-parser.add_argument('--data', type=str, default='../data',
-                    help='location of the data corpus')
-parser.add_argument('--set', type=str, default='cifar10',
-                    help='location of the data corpus')
-parser.add_argument('--batch_size', type=int,
-                    default=96, help='batch size')  # 256
-parser.add_argument('--learning_rate', type=float,
-                    default=0.1, help='init learning rate')
-parser.add_argument('--learning_rate_min', type=float,
-                    default=0.0, help='min learning rate')
+parser.add_argument('--data', type=str, default='../data',help='location of the data corpus')
+parser.add_argument('--set', type=str, default='cifar10',help='location of the data corpus')
+parser.add_argument('--batch_size', type=int,default=96, help='batch size')  # 256
+parser.add_argument('--learning_rate', type=float,default=0.1, help='init learning rate')
+parser.add_argument('--learning_rate_min', type=float,default=0.0, help='min learning rate')
 parser.add_argument('--momentum', type=float, default=0.9, help='momentum')
-parser.add_argument('--weight_decay', type=float,
-                    default=3e-4, help='weight decay')
-parser.add_argument('--report_freq', type=float,
-                    default=10, help='report frequency')
+parser.add_argument('--weight_decay', type=float,default=3e-4, help='weight decay')
+parser.add_argument('--report_freq', type=float,default=10, help='report frequency')
 parser.add_argument('--gpu', type=int, default=0, help='gpu device id')
-parser.add_argument('--epochs', type=int, default=50,
-                    help='num of training epochs')
-parser.add_argument('--init_channels', type=int,
-                    default=16, help='num of init channels')
-parser.add_argument('--layers', type=int, default=8,
-                    help='total number of layers')
-parser.add_argument('--model_path', type=str,
-                    default='saved_models', help='path to save the model')
-parser.add_argument('--cutout', action='store_true',
-                    default=False, help='use cutout')
-parser.add_argument('--cutout_length', type=int,
-                    default=16, help='cutout length')
-parser.add_argument('--drop_path_prob', type=float,
-                    default=0.3, help='drop path probability')
+parser.add_argument('--epochs', type=int, default=50,help='num of training epochs')
+parser.add_argument('--init_channels', type=int,default=16, help='num of init channels')
+parser.add_argument('--layers', type=int, default=8,help='total number of layers')
+parser.add_argument('--model_path', type=str,default='saved_models', help='path to save the model')
+parser.add_argument('--cutout', action='store_true',default=False, help='use cutout')
+parser.add_argument('--cutout_length', type=int,default=16, help='cutout length')
+parser.add_argument('--drop_path_prob', type=float,default=0.3, help='drop path probability')
 parser.add_argument('--save', type=str, default='EXP', help='experiment name')
 parser.add_argument('--seed', type=int, default=2, help='random seed')
-parser.add_argument('--grad_clip', type=float,
-                    default=5, help='gradient clipping')
-parser.add_argument('--train_portion', type=float,
-                    default=0.5, help='portion of training data')
-parser.add_argument('--unrolled', action='store_true',
-                    default=False, help='use one-step unrolled validation loss')
-parser.add_argument('--arch_learning_rate', type=float,
-                    default=6e-4, help='learning rate for arch encoding')
-parser.add_argument('--arch_weight_decay', type=float,
-                    default=1e-3, help='weight decay for arch encoding')
+parser.add_argument('--grad_clip', type=float,default=5, help='gradient clipping')
+parser.add_argument('--train_portion', type=float,default=0.5, help='portion of training data')
+parser.add_argument('--unrolled', action='store_true',default=False, help='use one-step unrolled validation loss')
+parser.add_argument('--arch_learning_rate', type=float,default=6e-4, help='learning rate for arch encoding')
+parser.add_argument('--arch_weight_decay', type=float,default=1e-3, help='weight decay for arch encoding')
 
 
 if False:
@@ -83,15 +66,34 @@ if False:
 
 CIFAR_CLASSES = 10
 
+def dump_genotype(model):
+    genotype = model.genotype()
+    logging.info('genotype = %s', genotype)
+    genotype_1 = model.cells[0].weight2gene()
+    assert genotype_1 in genotype
+    alphas_normal = model._arch_parameters[0]
+    alphas_normal = F.softmax(alphas_normal, dim=-1)
+    print(alphas_normal.detach().cpu().numpy())
+    values, indices = torch.max(alphas_normal, 1)
+    for val,typ in zip(values, indices):
+        PRIMITIVE=model.config.PRIMITIVES_pool[typ.item()]
+        print(f"\"{PRIMITIVE}\"={val.item():.4f},",end="")
+    #print(F.softmax(model.alphas_reduce, dim=-1))
+    print("")
 
 def main():
     if not torch.cuda.is_available():
         logging.info('no gpu device available')
         sys.exit(1)
     config = QuantumFold_config(None, 0)
-    if config.op_struc == "":
-        args.batch_size = args.batch_size//4
+    if config.op_struc == "":        args.batch_size = args.batch_size//4
+    config.experiment="cifar_10"
     OnInitInstance(args.seed, args.gpu)
+    if config.primitive == "atom":
+        config.PRIMITIVES_pool = ['none','max_pool_3x3','avg_pool_3x3','Identity','BatchNorm2d','ReLU','Conv2d_3','Conv2d_5']
+        config.PRIMITIVES_pool = ['none','max_pool_3x3','Identity','BatchNorm2d','ReLU','Conv2d_3','Conv2d_5','global_pool']
+    else:         
+        config.PRIMITIVES_pool = ['none','max_pool_3x3','avg_pool_3x3','skip_connect','sep_conv_3x3','sep_conv_5x5','dil_conv_3x3','dil_conv_5x5']
     args.load_workers = 8
 
     np.random.seed(args.seed)
@@ -105,11 +107,12 @@ def main():
 
     criterion = nn.CrossEntropyLoss()
     criterion = criterion.cuda()
-    model = Network(config, args.init_channels,
-                    CIFAR_CLASSES, args.layers, criterion)
+    model = Network(config, args.init_channels,CIFAR_CLASSES, args.layers, criterion)
     print(model)
     # dump_model_params(model)
     model = model.cuda()
+    model.visual =  Visdom_Visualizer(env_title=f"{args.set}_{model.title}")
+    model.visual.img_dir = "./results/images/"
     logging.info("param size = %.3fMB", utils.count_parameters_in_MB(model))
 
     optimizer = torch.optim.SGD(
@@ -150,18 +153,17 @@ def main():
     print(f"======\tconfig={config.__dict__}")
     print(f"======\targs={args.__dict__}")
     t0 = time.time()
-    for epoch in range(args.epochs):
-      
+    for epoch in range(args.epochs):      
         scheduler.step()
         lr = scheduler.get_lr()[0]
         logging.info('epoch %d lr %e', epoch, lr)
 
-        genotype = model.genotype()
-        logging.info('genotype = %s', genotype)
-
-        alphas_normal = model._arch_parameters[0]
-        print(F.softmax(alphas_normal, dim=-1))
-        #print(F.softmax(model.alphas_reduce, dim=-1))
+        dump_genotype(model)
+        # genotype = model.genotype()
+        # logging.info('genotype = %s', genotype)
+        # alphas_normal = model._arch_parameters[0]
+        # print(F.softmax(alphas_normal, dim=-1))
+        # #print(F.softmax(model.alphas_reduce, dim=-1))
 
         # training
         train_acc, train_obj = train(
@@ -169,10 +171,11 @@ def main():
         logging.info(f'train_acc {train_acc} T={time.time()-t0:.2f}')
 
         # validation
-        valid_acc, valid_obj = infer(valid_queue, model, criterion)
+        valid_acc, valid_obj = infer(valid_queue, model, criterion, epoch)
         logging.info(f'valid_acc {valid_acc} T={time.time()-t0:.2f}')
 
         utils.save(model, os.path.join(args.save, 'weights.pt'))
+        model.visual.UpdateLoss(title=f"Accuracy on \"{args.set}\"",legend=f"{model.title}", loss=valid_acc,yLabel="Accuracy")
 
 
 def train(train_queue, valid_queue, model, architect, criterion, optimizer, lr, epoch):
@@ -212,14 +215,15 @@ def train(train_queue, valid_queue, model, architect, criterion, optimizer, lr, 
 
         if step % args.report_freq == 0:
             logging.info('train %03d %.5f %.3f %.3f', step,objs.avg, top1.avg, top5.avg)
-        
+        #model.visual.UpdateLoss(title=f"Accuracy on train",legend=f"{model.title}", loss=prec1.item(),yLabel="Accuracy")
         print(f'\r\t{model.title}_{step}@{epoch}:\tloss={objs.avg:.3f}, top1={top1.avg:.2f}, top5={top5.avg:.2f} T={time.time()-t0:.1f}({tX:.3f})\t', end="")
+        #break
     print(f'train_{epoch}:best_prec={best_prec}\tT={time.time()-t0:.3f}')
 
     return top1.avg, objs.avg
 
 
-def infer(valid_queue, model, criterion):
+def infer(valid_queue, model, criterion,epoch):
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
     objs = utils.AvgrageMeter()
@@ -244,7 +248,7 @@ def infer(valid_queue, model, criterion):
             if step % args.report_freq == 0:
                 #logging.info('valid %03d %e %f %f', step, objs.avg, top1.avg, top5.avg)
                 print(
-                    f'\r\tvalid {step}:\t{objs.avg:.3f}, {top1.avg:.3f}, {top5.avg:.3f}', end="")
+                    f'\r\tvalid {step}@{epoch}:\t{objs.avg:.3f}, {top1.avg:.3f}, {top5.avg:.3f}', end="")
     print(f'\tinfer_:\tT={time.time()-t0:.3f}')
 
     return top1.avg, objs.avg
@@ -252,8 +256,7 @@ def infer(valid_queue, model, criterion):
 
 if __name__ == '__main__':
     args = parser.parse_args()
-    args.save = './search/{}-{}'.format(args.save,
-                                        time.strftime("%Y%m%d-%H%M%S"))
+    args.save = './search/{}-{}'.format(args.save,time.strftime("%Y%m%d-%H%M%S"))
     utils.create_exp_dir(args.save, scripts_to_save=glob.glob('*.py'))
 
     log_format = '%(asctime)s %(message)s'

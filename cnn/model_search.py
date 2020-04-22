@@ -52,7 +52,7 @@ class Network(nn.Module):
             self._initialize_weights()
         else:
             self._initialize_alphas()
-        self.title = f"\"{self.config.weights}_{self.config.op_struc}_{self.config.primitive}\""
+        self.title = f"\"{self.config.weights}_{self.config.op_struc}_{self.config.primitive}_{self.config.attention}\""
         print("")
 
     def new(self):
@@ -79,7 +79,8 @@ class Network(nn.Module):
 
         s0 = s1 = self.stem(input)
         self.UpdateWeights()
-        attention_func= F.softmax       #entmax15
+        attention_func= F.softmax if self.config.attention == "softmax" else entmax15
+
         for i, cell in enumerate(self.cells):
             if False:
                 if cell.reduction:
@@ -209,8 +210,9 @@ class Network(nn.Module):
         nzParam = sum(p.numel() for p in self._arch_parameters)
         return self._arch_parameters
     
+    
+
     def genotype(self):
-        return ""
         def _parse(weights):
             gene = []
             n = 2
@@ -229,9 +231,10 @@ class Network(nn.Module):
                 start = end
                 n += 1
             return gene
-
-        gene_normal = _parse(F.softmax(self.alphas_normal, dim=-1).data.cpu().numpy())
-        gene_reduce = _parse(F.softmax(self.alphas_reduce, dim=-1).data.cpu().numpy())
+        #alphas_normal,alphas_reduce=self.alphas_normal,self.alphas_reduce
+        alphas_normal,alphas_reduce=self._arch_parameters[0],self._arch_parameters[1]
+        gene_normal = _parse(F.softmax(alphas_normal, dim=-1).data.cpu().numpy())
+        gene_reduce = _parse(F.softmax(alphas_reduce, dim=-1).data.cpu().numpy())
 
         concat = range(2+self._steps-self._multiplier, self._steps+2)
         genotype = Genotype(
@@ -268,31 +271,7 @@ class Network(nn.Module):
                 n += 1
             return gene
 
-        def _parse_1(weights, weights2):
-            gene = []
-            n = 2   #number of edge for  each node
-            start = 0
-            none_index = PRIMITIVES.index('none')
-            for i in range(self._steps):
-                end = start + n
-                W = weights[start:end].copy()
-                W2 = weights2[start:end].copy()
-                for j in range(n):
-                    W[j, :] = W[j, :]*W2[j]
-                edges,cur_gene = [],[]
-                for edge in range(n):
-                  cur_nz = len(W[edge])
-                  k_sort = sorted(range(cur_nz), key=lambda k:W[edge][k])
-                  k_sort.remove(none_index)
-                  k_best = k_sort[cur_nz-2]
-                  cur_min, cur_max = W[edge][k_sort[0]], W[edge][k_best]
-                  edges.append(-cur_max)
-                  cur_gene.append((PRIMITIVES[k_best], edge))
-                edges = sorted(range(n), key=lambda k:edges[k])
-                gene.extend([cur_gene[edges[0]], cur_gene[edges[1]]])
-                start = end
-                n += 1
-            return gene
+        
         n = 3
         start = 2
         weightsr2 = F.softmax(self.betas_reduce[0:2], dim=-1)

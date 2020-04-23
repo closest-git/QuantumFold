@@ -10,7 +10,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from operations import *
-from genotypes import PRIMITIVES
 from genotypes import Genotype
 import time
 import random

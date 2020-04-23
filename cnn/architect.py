@@ -47,6 +47,9 @@ class Architect(object):
     self.optimizer.step()
     #print(f"Architect::step T={time.time()-t0:.3f}")
 
+  def isEarlyStopping(self):
+    return False
+
   def _backward_step(self, input_valid, target_valid):
     loss = self.model._loss(input_valid, target_valid)
     loss.backward()

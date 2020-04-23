@@ -11,7 +11,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 from operations import *
 from sparse_max import sparsemax, sparsemoid, entmoid15, entmax15
-from genotypes import PRIMITIVES
 from genotypes import Genotype
 import time
 from MixedOp import *
@@ -145,7 +144,7 @@ class Cell(nn.Module):
         gene = []
         n = 2   #2,3,4,5... number of edges
         start = 0
-        none_index = PRIMITIVES.index('none')
+        none_index = PRIMITIVES_pool.index('none')
         for i in range(self._steps):
             end = start + n
             W = weights[start:end].copy()
@@ -155,14 +154,14 @@ class Cell(nn.Module):
                     W[j, :] = W[j, :]*W2[j]
             edges,cur_gene = [],[]
             for edge in range(n):
-                print(W[edge])
+                #print(W[edge])
                 cur_nz = len(W[edge])
                 k_sort = sorted(range(cur_nz), key=lambda k:W[edge][k])
                 k_sort.remove(none_index)
                 k_best = k_sort[cur_nz-2]
                 cur_min, cur_max = W[edge][k_sort[0]], W[edge][k_best]
                 edges.append(-cur_max)
-                cur_gene.append((PRIMITIVES[k_best], edge))
+                cur_gene.append((PRIMITIVES_pool[k_best], edge))
             edges = sorted(range(n), key=lambda k:edges[k]) #Default is ascending
             gene.extend([cur_gene[edges[0]], cur_gene[edges[1]]])
             start = end

@@ -22,7 +22,7 @@ from model import NetworkCIFAR as Network
 parser = argparse.ArgumentParser("cifar")
 parser.add_argument('--data', type=str, default='../data', help='location of the data corpus')
 parser.add_argument('--set', type=str, default='cifar10', help='location of the data corpus')
-parser.add_argument('--batch_size', type=int, default=32, help='batch size')  #96
+parser.add_argument('--batch_size', type=int, default=96, help='batch size')  #96
 parser.add_argument('--learning_rate', type=float, default=0.025, help='init learning rate')
 parser.add_argument('--momentum', type=float, default=0.9, help='momentum')
 parser.add_argument('--weight_decay', type=float, default=3e-4, help='weight decay')
@@ -71,10 +71,13 @@ def main():
   logging.info('gpu device = %d' % args.gpu)
   logging.info("args = %s", args)
 
+  args.arch='S_CYS_cifar'
   genotype = eval("genotypes.%s" % args.arch)
+  print(f"======args={args}\n")
+  print(f"======genotype={genotype}\n")
   model = Network(args.init_channels, CIFAR_CLASSES, args.layers, args.auxiliary, genotype)
   model = model.cuda()
-  print(model)
+  #print(model)
 
   logging.info("param size = %.3fMB", utils.count_parameters_in_MB(model))
 
@@ -149,7 +152,7 @@ def train(train_queue, model, criterion, optimizer,epoch):
 
     if step % args.report_freq == 0:
       logging.info('train %03d %e %f %f', step, objs.avg, top1.avg, top5.avg)
-    print(f'\rtrain_{step}@{epoch}:\tloss={objs.avg:.3f}, top1={top1.avg:.3f}, top5={top5.avg:.3f} T={time.time()-t0:.3f}',end="")
+    print(f'\r\ttrain_{step}@{epoch}:\tloss={objs.avg:.2f}, top1={top1.avg:.2f}, top5={top5.avg:.2f} T={time.time()-t0:.1f}\t',end="")
 
   return top1.avg, objs.avg
 
@@ -161,7 +164,7 @@ def infer(valid_queue, model, criterion):
   model.eval()
   with torch.no_grad():
     for step, (input, target) in enumerate(valid_queue):
-      input = Variable(inpute).cuda()
+      input = Variable(input).cuda()
       target = Variable(target).cuda() #async=True
 
       logits, _ = model(input)

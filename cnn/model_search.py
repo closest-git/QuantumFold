@@ -4,7 +4,7 @@ import torch.nn.functional as F
 from operations import *
 from torch.autograd import Variable
 from sparse_max import sparsemax, sparsemoid, entmoid15, entmax15
-from genotypes import PRIMITIVES
+#from genotypes import PRIMITIVES
 from genotypes import Genotype
 import time
 from MixedOp import *
@@ -187,7 +187,8 @@ class Network(nn.Module):
     def _initialize_weights(self):
         self._arch_parameters=[]
         isShare = True
-        nOP,nNode = len(PRIMITIVES),sum(1 for i in range(self._steps) for n in range(2+i))
+        nOP = len(self.config.PRIMITIVES_pool)
+        nNode = sum(1 for i in range(self._steps) for n in range(2+i))
         if isShare:
             w_normal = Cell.OP_weights(self.config,nOP,self._steps)
             w_reduce = Cell.OP_weights(self.config,nOP,self._steps)
@@ -214,20 +215,21 @@ class Network(nn.Module):
 
     def genotype(self):
         def _parse(weights):
+            PRIMITIVES_pool = self.config.PRIMITIVES_pool
             gene = []
             n = 2
             start = 0
             for i in range(self._steps):
                 end = start + n
                 W = weights[start:end].copy()
-                edges = sorted(range(i + 2), key=lambda x: -max(W[x][k] for k in range(len(W[x])) if k != PRIMITIVES.index('none')))[:2]
+                edges = sorted(range(i + 2), key=lambda x: -max(W[x][k] for k in range(len(W[x])) if k != PRIMITIVES_pool.index('none')))[:2]
                 for j in edges:
                     k_best = None
                     for k in range(len(W[j])):
-                        if k != PRIMITIVES.index('none'):
+                        if k != PRIMITIVES_pool.index('none'):
                             if k_best is None or W[j][k] > W[j][k_best]:
                                 k_best = k
-                    gene.append((PRIMITIVES[k_best], j))
+                    gene.append((PRIMITIVES_pool[k_best], j))
                 start = end
                 n += 1
             return gene

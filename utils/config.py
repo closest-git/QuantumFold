@@ -1,7 +1,7 @@
 '''
 @Author: Yingshi Chen
 @Date: 2020-02-14 11:59:10
-@LastEditTime: 2020-04-22 15:16:17
+@LastEditTime: 2020-04-22 17:21:19
 @LastEditors: Please set LastEditors
 @Description: In User Settings Edit
 @FilePath: \QuantumForest\python-package\quantum_forest\QForest.py
@@ -34,7 +34,7 @@ class QuantumFold_config:
 
         self.op_struc = "darts"           #"PCC" "darts" "pair"
         self.weights = "cys"    
-        self.primitive = "atom"     
+        self.primitive = "p1"              #"p0"    "p1"    "c0"
         self.attention = "softmax"         #"entmax" 
         
         self.err_relative = False

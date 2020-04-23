@@ -29,23 +29,13 @@ OPS = {
       nn.BatchNorm2d(C, affine=affine),
       Identity_Stride_(stride)
     ),
-  'Conv2d_3' : lambda C, stride, affine: nn.Conv2d(C, C, 3, stride,padding=1,   bias=False),
-  'Conv2d_5' : lambda C, stride, affine: nn.Conv2d(C, C, 5, stride,padding=2,   bias=False),
-  'Conv2d_32' : lambda C, stride, affine: nn.Conv2d(C, C, 3, stride,padding=2, dilation=2, groups=C, bias=False),
-  'Conv2d_52' : lambda C, stride, affine: nn.Conv2d(C, C, 5, stride,padding=4, dilation=2, groups=C, bias=False),
-  'ConvX_5' : lambda C, stride, affine: nn.Sequential(
-    nn.Conv2d(C, C, (1,7), stride=(1, stride), padding=(0, 3), bias=False),
-    nn.MaxPool2d(3, stride=stride, padding=1),
-  ),
-  'ConvY_5' : lambda C, stride, affine: nn.Conv2d(C, C, (7,1), stride=(stride, 1), padding=(3, 0), bias=False),
-  'conv_7x1_1x7' : lambda C, stride, affine: nn.Sequential(
-    nn.Conv2d(C, C, (1,7), stride=(1, stride), padding=(0, 3), bias=False),
-    nn.Conv2d(C, C, (7,1), stride=(stride, 1), padding=(3, 0), bias=False),
-    ),
-  'conv_5x1_1x5' : lambda C, stride, affine: nn.Sequential(
-    nn.Conv2d(C, C, (1,5), stride=(1, stride), padding=(0, 2), bias=False),
-    nn.Conv2d(C, C, (5,1), stride=(stride, 1), padding=(2, 0), bias=False),
-    ),
+  'Conv_3' : lambda C, stride, affine: nn.Conv2d(C, C, 3, stride,padding=1,   bias=False),
+  'Conv_5' : lambda C, stride, affine: nn.Conv2d(C, C, 5, stride,padding=2,   bias=False),
+  'DepthConv_3' : lambda C, stride, affine: nn.Conv2d(C, C, 3, stride,padding=2, dilation=2, groups=C, bias=False),
+  'DepthConv_5' : lambda C, stride, affine: nn.Conv2d(C, C, 5, stride,padding=4, dilation=2, groups=C, bias=False),
+  'Conv_11' : lambda C, stride, affine: nn.Conv2d(C, C, kernel_size=1, stride=stride,padding=0, bias=False),
+  
+  
 }
 
 

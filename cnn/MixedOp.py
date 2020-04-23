@@ -41,15 +41,10 @@ class MixedOp(nn.Module):
         super(MixedOp, self).__init__()
         self._ops = nn.ModuleList()
         self.config = config
-        # if config.primitive == "atom":
-        #     PRIMITIVES_pool = ['none','max_pool_3x3','avg_pool_3x3','Identity','BatchNorm2d','ReLU','Conv2d_3','Conv2d_5']
-        #     PRIMITIVES_pool = ['none','max_pool_3x3','Identity','BatchNorm2d','ReLU','Conv2d_3','Conv2d_5','global_pool']
-        # else:         
-        #     PRIMITIVES_pool = PRIMITIVES
 
         for primitive in self.config.PRIMITIVES_pool:
             op = OPS[primitive](C, stride, False)
-            if 'pool' in primitive and config.primitive != "atom":
+            if 'pool' in primitive and config.primitive == "c0":
                 op = nn.Sequential(op, nn.BatchNorm2d(C, affine=False))
             self._ops.append(op)
         nOP = len(self._ops)
@@ -83,10 +78,6 @@ class MixedOp_pair(nn.Module):
         self.config = config
         
         self.isShuffle = True    
-        if config.primitive == "atom":
-            PRIMITIVES_pool = ['none','max_pool_3x3','avg_pool_3x3','Identity','BatchNorm2d','ReLU','Conv2d_3','Conv2d_5']
-        else:         
-            PRIMITIVES_pool = PRIMITIVES
         
         for primitive in PRIMITIVES_pool:
             op = OPS[primitive](self.nCand, stride, False)

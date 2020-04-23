@@ -89,10 +89,11 @@ def main():
     if config.op_struc == "":        args.batch_size = args.batch_size//4
     config.experiment="cifar_10"
     OnInitInstance(args.seed, args.gpu)
-    if config.primitive == "atom":
-        config.PRIMITIVES_pool = ['none','max_pool_3x3','avg_pool_3x3','Identity','BatchNorm2d','ReLU','Conv2d_3','Conv2d_5']
-        config.PRIMITIVES_pool = ['none','max_pool_3x3','Identity','BatchNorm2d','ReLU','Conv2d_3','Conv2d_5','global_pool']
-    else:         
+    if config.primitive == "p0":
+        config.PRIMITIVES_pool = ['none','max_pool_3x3','avg_pool_3x3','Identity','BatchNorm2d','ReLU','Conv_3','Conv_5']
+    elif config.primitive == "p1":
+        config.PRIMITIVES_pool = ['none','max_pool_3x3','Identity','BatchNorm2d','ReLU','Conv_3','DepthConv_3','Conv_11']
+    elif config.primitive == "c0":       
         config.PRIMITIVES_pool = ['none','max_pool_3x3','avg_pool_3x3','skip_connect','sep_conv_3x3','sep_conv_5x5','dil_conv_3x3','dil_conv_5x5']
     args.load_workers = 8
 

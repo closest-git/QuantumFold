@@ -24,9 +24,13 @@ from model_search import Network
 from torch.autograd import Variable
 from Visualizing import *
 from genotypes import *
+from experiment import *
 
-#python cnn/search_darts.py --gpu 1
-'''>python cnn/train.py'''
+
+'''
+    python cnn/search_darts.py --gpu 1
+'''
+
 parser = argparse.ArgumentParser("cifar")
 parser.add_argument('--data', type=str, default='../data',help='location of the data corpus')
 parser.add_argument('--set', type=str, default='cifar10',help='location of the data corpus')
@@ -77,8 +81,8 @@ def main():
         sys.exit(1)
     config = QuantumFold_config(None, 0)
     if config.op_struc == "":        args.batch_size = args.batch_size//4
-    config.experiment="cifar_10"
-    OnInitInstance(args.seed, args.gpu)
+    
+    config.device = OnInitInstance(args.seed, args.gpu)
     if config.primitive == "p0":
         config.PRIMITIVES_pool = ['none','max_pool_3x3','avg_pool_3x3','Identity','BatchNorm2d','ReLU','Conv_3','Conv_5']
     elif config.primitive == "p1":
@@ -135,6 +139,7 @@ def main():
         sampler=torch.utils.data.sampler.SubsetRandomSampler(
             indices[split:num_train]),
         pin_memory=True, num_workers=0)
+    config.experiment = Experiment(config,"cifar_10",model,loss_fn=None,optimizer=optimizer,objective_metric=None)
 
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
         optimizer, float(args.epochs), eta_min=args.learning_rate_min)
@@ -150,11 +155,6 @@ def main():
         logging.info('epoch %d lr %e', epoch, lr)
 
         dump_genotype(model,logging)
-        # genotype = model.genotype()
-        # logging.info('genotype = %s', genotype)
-        # alphas_normal = model._arch_parameters[0]
-        # print(F.softmax(alphas_normal, dim=-1))
-        # #print(F.softmax(model.alphas_reduce, dim=-1))
 
         # training
         train_acc, train_obj = train(
@@ -164,7 +164,7 @@ def main():
         # validation
         valid_acc, valid_obj = infer(valid_queue, model, criterion, epoch)
         logging.info(f'valid_acc {valid_acc} T={time.time()-t0:.2f}')
-
+        config.experiment.best_score = max(valid_acc,config.experiment.best_score)
         utils.save(model, os.path.join(args.save, 'weights.pt'))
         model.visual.UpdateLoss(title=f"Accuracy on \"{args.set}\"",legend=f"{model.title}", loss=valid_acc,yLabel="Accuracy")
 
@@ -175,20 +175,19 @@ def train(train_queue, valid_queue, model, architect, criterion, optimizer, lr, 
     top5 = utils.AvgrageMeter()
     tX,t0 = 0,time.time()
     best_prec = 0
+    isArchitect = not model.config.experiment.isKeepWarm()     
     for step, (input, target) in enumerate(train_queue):
         model.train()
         n = input.size(0)
         input = Variable(input, requires_grad=False).cuda()
         target = Variable(target, requires_grad=False).cuda()
         # get a random minibatch from the search queue with replacement
-        
-        input_search, target_search = next(iter(valid_queue))
-        input_search = Variable(input_search, requires_grad=False).cuda()
-        target_search = Variable(target_search, requires_grad=False).cuda()
-        # two-stage training
         t1 = time.time()
-        architect.step(input, target, input_search, target_search,lr, optimizer, unrolled=args.unrolled)
-        
+        if isArchitect:     # two-stage training
+            input_search, target_search = next(iter(valid_queue))
+            input_search = Variable(input_search, requires_grad=False).cuda()
+            target_search = Variable(target_search, requires_grad=False).cuda()    
+            architect.step(input, target, input_search, target_search,lr, optimizer, unrolled=args.unrolled)
         
         optimizer.zero_grad()
         logits = model(input)
@@ -238,8 +237,7 @@ def infer(valid_queue, model, criterion,epoch):
 
             if step % args.report_freq == 0:
                 #logging.info('valid %03d %e %f %f', step, objs.avg, top1.avg, top5.avg)
-                print(
-                    f'\r\tvalid {step}@{epoch}:\t{objs.avg:.3f}, {top1.avg:.3f}, {top5.avg:.3f}', end="")
+                print(f'\r\tvalid {step}@{epoch}:\t{objs.avg:.3f}, {top1.avg:.3f}, {top5.avg:.3f}', end="")
     print(f'\tinfer_:\tT={time.time()-t0:.3f}')
 
     return top1.avg, objs.avg

@@ -15,8 +15,10 @@ import torch.backends.cudnn as cudnn
 
 from torch.autograd import Variable
 from model import NetworkCIFAR as Network
+sys.path.append(os.path.abspath("utils"))
+from Visualizing import *
 
-# cd E:\fengnaixing\cys\QuantumNetcd ..
+# cd E:\fengnaixing\cys\QuantumNetcd 
 # python cnn/train.py --auxiliary --cutout
 #
 parser = argparse.ArgumentParser("cifar")
@@ -26,7 +28,7 @@ parser.add_argument('--batch_size', type=int, default=96, help='batch size')  #9
 parser.add_argument('--learning_rate', type=float, default=0.025, help='init learning rate')
 parser.add_argument('--momentum', type=float, default=0.9, help='momentum')
 parser.add_argument('--weight_decay', type=float, default=3e-4, help='weight decay')
-parser.add_argument('--report_freq', type=float, default=50, help='report frequency')
+parser.add_argument('--report_freq', type=float, default=200, help='report frequency')
 parser.add_argument('--gpu', type=int, default=0, help='gpu device id')
 parser.add_argument('--epochs', type=int, default=600, help='num of training epochs')
 parser.add_argument('--init_channels', type=int, default=36, help='num of init channels')
@@ -77,6 +79,8 @@ def main():
   print(f"======genotype={genotype}\n")
   model = Network(args.init_channels, CIFAR_CLASSES, args.layers, args.auxiliary, genotype)
   model = model.cuda()
+  model.visual =  Visdom_Visualizer(env_title=f"T{args.set}_{args.arch}")
+  model.visual.img_dir = "./results/images/"
   #print(model)
 
   logging.info("param size = %.3fMB", utils.count_parameters_in_MB(model))
@@ -120,7 +124,7 @@ def main():
     if valid_acc > best_acc:
         best_acc = valid_acc
     logging.info('valid_acc %f, best_acc %f', valid_acc, best_acc)
-
+    model.visual.UpdateLoss(title=f"Accuracy on \"{args.set}\"",legend=f"{args.arch}", loss=valid_acc,yLabel="Accuracy")
     utils.save(model, os.path.join(args.save, 'weights.pt'))
 
 

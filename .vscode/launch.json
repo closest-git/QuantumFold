@@ -14,12 +14,23 @@
             "env": {
                 "PYTHONPATH": "${workspaceRoot}"
             }
-        }
+        },
+        {
+            "name": "train_imagenet",
+            "type": "python",
+            "request": "launch",
+            "program": "E:/QuantumFold/cnn/train_imagenet.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceRoot}",
+            "env": {
+                "PYTHONPATH": "${workspaceRoot}"
+            }
+        },
         {
             "name": "search",
             "type": "python",
             "request": "launch",
-            "program": "E:/QuantumFold/cnn/train_search.py",
+            "program": "E:/QuantumFold/cnn/search_darts.py",
             "console": "integratedTerminal",
             "cwd": "${workspaceRoot}",
             "env": {

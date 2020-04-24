@@ -52,7 +52,9 @@ class Network(nn.Module):
             self._initialize_weights()
         else:
             self._initialize_alphas()
-        self.title = f"\"{self.config.weights}_{self.config.op_struc}_{self.config.primitive}_{self.config.attention}\""
+        share = "" if self.config.weight_share else "$$$"
+        attention = self.config.attention[0:3]
+        self.title = f"\"{self.config.weights}{share}_{self.config.op_struc}_{self.config.primitive}_{attention}\""
         print("")
 
     def new(self):
@@ -186,7 +188,7 @@ class Network(nn.Module):
 
     def _initialize_weights(self):
         self._arch_parameters=[]
-        isShare = True
+        isShare = self.config.weight_share
         nOP = len(self.config.PRIMITIVES_pool)
         nNode = sum(1 for i in range(self._steps) for n in range(2+i))
         if isShare:

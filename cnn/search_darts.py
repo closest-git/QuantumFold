@@ -23,7 +23,10 @@ from architect import Architect
 from model_search import Network
 from torch.autograd import Variable
 from Visualizing import *
+from genotypes import *
 
+#python cnn/search_darts.py --gpu 1
+'''>python cnn/train.py'''
 parser = argparse.ArgumentParser("cifar")
 parser.add_argument('--data', type=str, default='../data',help='location of the data corpus')
 parser.add_argument('--set', type=str, default='cifar10',help='location of the data corpus')
@@ -66,20 +69,7 @@ if False:
 
 CIFAR_CLASSES = 10
 
-def dump_genotype(model):
-    genotype = model.genotype()
-    logging.info('genotype = %s', genotype)
-    genotype_1 = model.cells[0].weight2gene()
-    assert genotype_1 in genotype
-    alphas_normal = model._arch_parameters[0]
-    alphas_normal = F.softmax(alphas_normal, dim=-1)
-    print(alphas_normal.detach().cpu().numpy())
-    values, indices = torch.max(alphas_normal, 1)
-    for val,typ in zip(values, indices):
-        PRIMITIVE=model.config.PRIMITIVES_pool[typ.item()]
-        print(f"\"{PRIMITIVE}\"={val.item():.4f},",end="")
-    #print(F.softmax(model.alphas_reduce, dim=-1))
-    print("")
+
 
 def main():
     if not torch.cuda.is_available():
@@ -159,7 +149,7 @@ def main():
         lr = scheduler.get_lr()[0]
         logging.info('epoch %d lr %e', epoch, lr)
 
-        dump_genotype(model)
+        dump_genotype(model,logging)
         # genotype = model.genotype()
         # logging.info('genotype = %s', genotype)
         # alphas_normal = model._arch_parameters[0]

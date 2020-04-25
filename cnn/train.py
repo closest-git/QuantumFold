@@ -81,7 +81,7 @@ def main():
   model = model.cuda()
   model.visual =  Visdom_Visualizer(env_title=f"T{args.set}_{args.arch}")
   model.visual.img_dir = "./results/images/"
-  #print(model)
+  print(model)
 
   logging.info("param size = %.3fMB", utils.count_parameters_in_MB(model))
 

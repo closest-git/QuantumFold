@@ -87,6 +87,8 @@ def main():
         config.PRIMITIVES_pool = ['none','max_pool_3x3','avg_pool_3x3','Identity','BatchNorm2d','ReLU','Conv_3','Conv_5']
     elif config.primitive == "p1":
         config.PRIMITIVES_pool = ['none','max_pool_3x3','Identity','BatchNorm2d','ReLU','Conv_3','DepthConv_3','Conv_11']
+    elif config.primitive == "p2":
+        config.PRIMITIVES_pool = ['none','max_pool_3x3','Identity','BatchNorm2d','ReLU','Conv_3','DepthConv_3','Conv_11']
     elif config.primitive == "c0":       
         config.PRIMITIVES_pool = ['none','max_pool_3x3','avg_pool_3x3','skip_connect','sep_conv_3x3','sep_conv_5x5','dil_conv_3x3','dil_conv_5x5']
     args.load_workers = 8

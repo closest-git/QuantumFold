@@ -40,7 +40,7 @@ class Network(nn.Module):
                 reduction = True
             else:
                 reduction = False
-            cell = Cell(config,steps, multiplier, C_prev_prev, C_prev,C_curr, reduction, reduction_prev)
+            cell = StemCell(config,steps, multiplier, C_prev_prev, C_prev,C_curr, reduction, reduction_prev)
             reduction_prev = reduction
             self.cells += [cell]
             C_prev_prev, C_prev = C_prev, multiplier*C_curr
@@ -52,7 +52,7 @@ class Network(nn.Module):
             self._initialize_weights()
         else:
             self._initialize_alphas()
-        share = "" if self.config.weight_share else "$$$"
+        share = "" if self.config.weight_share else "***"
         attention = self.config.attention[0:3]
         self.title = f"\"{self.config.weights}{share}_{self.config.op_struc}_{self.config.primitive}_{attention}\""
         print("")
@@ -192,14 +192,14 @@ class Network(nn.Module):
         nOP = len(self.config.PRIMITIVES_pool)
         nNode = sum(1 for i in range(self._steps) for n in range(2+i))
         if isShare:
-            w_normal = Cell.OP_weights(self.config,nOP,self._steps)
-            w_reduce = Cell.OP_weights(self.config,nOP,self._steps)
+            w_normal = StemCell.OP_weights(self.config,nOP,self._steps)
+            w_reduce = StemCell.OP_weights(self.config,nOP,self._steps)
             self._arch_parameters.extend(w_normal.get_param())
             self._arch_parameters.extend(w_reduce.get_param())
         nReduct,nNormal=0,0
         for i, cell in enumerate(self.cells):   
             if not isShare:
-                w_cell = Cell.OP_weights(self.config,nOP,self._steps)
+                w_cell = StemCell.OP_weights(self.config,nOP,self._steps)
                 self._arch_parameters.extend(w_cell.get_param())
             if cell.reduction:                
                 cell.weight = w_reduce if isShare else w_cell

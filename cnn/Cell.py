@@ -16,8 +16,10 @@ import time
 from MixedOp import *
 from torch.autograd import Variable
 
-
-class Cell(nn.Module):
+'''
+    有趣的干细胞
+'''
+class StemCell(nn.Module):
     #多个cell之间可共用weight!!!
     class OP_weights(object):
         def __init__(self,config, nOP,nNode):
@@ -54,16 +56,29 @@ class Cell(nn.Module):
                 return [self.alphas_]
 
     def __init__(self,config, steps, multiplier, C_prev_prev, C_prev, C, reduction, reduction_prev):
-        super(Cell, self).__init__()
+        super(StemCell, self).__init__()
         self.config = config
         self.reduction = reduction
         self.weight=None
 
-        if reduction_prev:
-            self.preprocess0 = FactorizedReduce(C_prev_prev, C, affine=False)
+        # if reduction_prev:
+        #     self.preprocess0 = FactorizedReduce(C_prev_prev, C, affine=False)
+        # else:
+        #     self.preprocess0 = ReLUConvBN(C_prev_prev, C, 1, 1, 0, affine=False)
+        # self.preprocess1 = ReLUConvBN(C_prev, C, 1, 1, 0, affine=False)
+        if self.config.primitive == "p2":
+            if reduction_prev:
+                self.preprocess0 = FactorizedReduce(C_prev_prev, C, affine=False)
+            else:
+                self.preprocess0 = nn.Conv2d(C_prev_prev, C, 1, 1, 0, bias=False)
+            self.preprocess1 = nn.Conv2d(C_prev, C, 1, 1, 0, bias=False)
         else:
-            self.preprocess0 = ReLUConvBN(C_prev_prev, C, 1, 1, 0, affine=False)
-        self.preprocess1 = ReLUConvBN(C_prev, C, 1, 1, 0, affine=False)
+            if reduction_prev:
+                self.preprocess0 = FactorizedReduce(C_prev_prev, C, affine=False)
+            else:
+                self.preprocess0 = ReLUConvBN(C_prev_prev, C, 1, 1, 0, affine=False)
+            self.preprocess1 = ReLUConvBN(C_prev, C, 1, 1, 0, affine=False)
+
         self._steps = steps
         self._multiplier = multiplier
 
@@ -167,5 +182,70 @@ class Cell(nn.Module):
             start = end
             n += 1
         return gene
+
+'''
+    需要和Cell合并
+'''
+def drop_path(x, drop_prob):
+  if drop_prob > 0.:
+    keep_prob = 1.-drop_prob
+    mask = Variable(torch.cuda.FloatTensor(x.size(0), 1, 1, 1).bernoulli_(keep_prob))
+    x.div_(keep_prob)
+    x.mul_(mask)
+  return x
+
+class Celler(nn.Module):
+
+  def __init__(self, genotype, C_prev_prev, C_prev, C, reduction, reduction_prev):
+    super(Celler, self).__init__()
+    print(C_prev_prev, C_prev, C)
+
+    if reduction_prev:
+      self.preprocess0 = FactorizedReduce(C_prev_prev, C)
+    else:
+      self.preprocess0 = ReLUConvBN(C_prev_prev, C, 1, 1, 0)
+    self.preprocess1 = ReLUConvBN(C_prev, C, 1, 1, 0)
+    
+    if reduction:
+      op_names, indices = zip(*genotype.reduce)
+      concat = genotype.reduce_concat
+    else:
+      op_names, indices = zip(*genotype.normal)
+      concat = genotype.normal_concat
+    self._compile(C, op_names, indices, concat, reduction)
+
+  def _compile(self, C, op_names, indices, concat, reduction):
+    assert len(op_names) == len(indices)
+    self._steps = len(op_names) // 2
+    self._concat = concat
+    self.multiplier = len(concat)
+
+    self._ops = nn.ModuleList()
+    for name, index in zip(op_names, indices):
+      stride = 2 if reduction and index < 2 else 1
+      op = OPS[name](C, stride, True)
+      self._ops += [op]
+    self._indices = indices
+
+  def forward(self, s0, s1, drop_prob):
+    s0 = self.preprocess0(s0)
+    s1 = self.preprocess1(s1)
+
+    states = [s0, s1]
+    for i in range(self._steps):
+      h1 = states[self._indices[2*i]]
+      h2 = states[self._indices[2*i+1]]
+      op1 = self._ops[2*i]
+      op2 = self._ops[2*i+1]
+      h1 = op1(h1)
+      h2 = op2(h2)
+      if self.training and drop_prob > 0.:
+        if not isinstance(op1, Identity):
+          h1 = drop_path(h1, drop_prob)
+        if not isinstance(op2, Identity):
+          h2 = drop_path(h2, drop_prob)
+      s = h1 + h2
+      states += [s]
+    return torch.cat([states[i] for i in self._concat], dim=1)
 
 

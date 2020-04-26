@@ -11,6 +11,22 @@ from MixedOp import *
 from Cell import *
 
 class Network(nn.Module):
+    class stem_01(nn.Module):
+        def __init__(self,config,C_curr, reduction):
+            super(Network.stem_01, self).__init__()
+            self.stem = nn.Sequential(
+                nn.Conv2d(3, C_curr, 3, padding=1, bias=False),
+                nn.BatchNorm2d(C_curr)
+            )
+            self.nChanel = C_curr
+            self.reduction = reduction
+        
+        def forward(self, x):
+            x = self.stem(x)
+            return x
+        
+        def weight2gene(self):
+            return "stem_01_{self.nChanel}_{self.reduction}"
 
     def __init__(self,config, C, num_classes, layers, criterion, steps=4, multiplier=4, stem_multiplier=3):
         super(Network, self).__init__()
@@ -21,18 +37,17 @@ class Network(nn.Module):
         self._criterion = criterion
         self._steps = steps     #number of nodes in each cell
         self._multiplier = multiplier
-        #self.attention_func = F.softmax  # 
-        #self.attention_func = entmax15      #有意思，差不多
-        #self.attention_func = lambda x,dim: x
-
-        C_curr = stem_multiplier*C
-        self.stem = nn.Sequential(
-            nn.Conv2d(3, C_curr, 3, padding=1, bias=False),
-            nn.BatchNorm2d(C_curr)
-        )
-
-        C_prev_prev, C_prev, C_curr = C_curr, C_curr, C
+        
+        if False:
+            C_curr = stem_multiplier*C
+            self.stem = nn.Sequential(
+                nn.Conv2d(3, C_curr, 3, padding=1, bias=False),
+                nn.BatchNorm2d(C_curr)
+            )
+            C_prev_prev, C_prev, C_curr = C_curr, C_curr, C
         self.cells = nn.ModuleList()
+        self.cells.append( Network.stem_01(config,stem_multiplier*C,False) )
+        C_curr = C
         reduction_prev = False
         for i in range(layers):
             if i in [layers//3, 2*layers//3]:
@@ -40,11 +55,12 @@ class Network(nn.Module):
                 reduction = True
             else:
                 reduction = False
-            cell = StemCell(config,steps, multiplier, C_prev_prev, C_prev,C_curr, reduction, reduction_prev)
+            #cell = StemCell(config,steps, multiplier, C_prev_prev, C_prev,C_curr, reduction, reduction_prev)
+            cell = StemCell(config,steps, multiplier, self.cells,C_curr, reduction, reduction_prev)
             reduction_prev = reduction
             self.cells += [cell]
-            C_prev_prev, C_prev = C_prev, multiplier*C_curr
-
+            #C_prev_prev, C_prev = C_prev, multiplier*C_curr
+        C_prev = self.cells[-1].nChanel
         self.global_pooling = nn.AdaptiveAvgPool2d(1)
         self.classifier = nn.Linear(C_prev, num_classes)
         #print(self.cells)
@@ -65,11 +81,17 @@ class Network(nn.Module):
 
     def forward_V1(self, input):
         # t0=time.time()
-        s0 = s1 = self.stem(input)
+        if hasattr(self,"stem"):
+            s0 = s1 = self.stem(input)
+        else:
+            s0,s1=None,None
  
         self.UpdateWeights()
         for i, cell in enumerate(self.cells):
-            s0, s1 = s1, cell(s0, s1)            
+            if s0 is None:
+               s0 = s1 = cell(input) 
+            else:
+                s0, s1 = s1, cell(s0, s1)            
         out = self.global_pooling(s1)
         logits = self.classifier(out.view(out.size(0), -1))
         #print(f"Network::forward T={time.time()-t0:.3f}")
@@ -79,7 +101,7 @@ class Network(nn.Module):
         if self.config.op_struc != "darts":
             return self.forward_V1(input)
 
-        s0 = s1 = self.stem(input)
+        s0,s1 = None,None #self.stem(input)
         self.UpdateWeights()
         attention_func= F.softmax if self.config.attention == "softmax" else entmax15
 
@@ -90,40 +112,13 @@ class Network(nn.Module):
                 else:
                     weights = attention_func(self.alphas_normal, dim=-1)
                 s0, s1 = s1, cell(s0, s1, weights)
-            s0, s1 = s1, cell(s0, s1)
-        out = self.global_pooling(s1)
-        logits = self.classifier(out.view(out.size(0),-1))
-        return logits
-
-    def forward_v0(self, input):
-        s0 = s1 = self.stem(input)
-        for i, cell in enumerate(self.cells):
-            if cell.reduction:
-                weights = F.softmax(self.alphas_reduce, dim=-1)
-                n = 3
-                start = 2
-                weights2 = F.softmax(self.betas_reduce[0:2], dim=-1)
-                for i in range(self._steps-1):
-                    end = start + n
-                    tw2 = F.softmax(self.betas_reduce[start:end], dim=-1)
-                    start = end
-                    n += 1
-                    weights2 = torch.cat([weights2,tw2],dim=0)
+            if s0 is None:
+               s0 = s1 = cell(input) 
             else:
-                weights = F.softmax(self.alphas_normal, dim=-1)
-                n = 3
-                start = 2
-                weights2 = F.softmax(self.betas_normal[0:2], dim=-1)
-                for i in range(self._steps-1):
-                    end = start + n
-                    tw2 = F.softmax(self.betas_normal[start:end], dim=-1)
-                    start = end
-                    n += 1
-                    weights2 = torch.cat([weights2,tw2],dim=0)
-            s0, s1 = s1, cell(s0, s1, weights,weights2)
+                s0, s1 = s1, cell(s0, s1)
         out = self.global_pooling(s1)
         logits = self.classifier(out.view(out.size(0),-1))
-        return logits
+        return logits    
 
     def UpdateWeights(self):
         if self.config.weights == "cys":
@@ -216,6 +211,9 @@ class Network(nn.Module):
     
 
     def genotype(self):
+        if self.config.op_struc == "PCC":
+            return self.genotype_PCC()
+
         def _parse(weights):
             PRIMITIVES_pool = self.config.PRIMITIVES_pool
             gene = []
@@ -236,7 +234,7 @@ class Network(nn.Module):
                 n += 1
             return gene
         #alphas_normal,alphas_reduce=self.alphas_normal,self.alphas_reduce
-        alphas_normal,alphas_reduce=self._arch_parameters[0],self._arch_parameters[1]
+        alphas_normal,alphas_reduce=self._arch_parameters[0],self._arch_parameters[2]
         gene_normal = _parse(F.softmax(alphas_normal, dim=-1).data.cpu().numpy())
         gene_reduce = _parse(F.softmax(alphas_reduce, dim=-1).data.cpu().numpy())
 
@@ -247,13 +245,15 @@ class Network(nn.Module):
         )
         return genotype
 
-    def genotype_v1(self):
-
+    def genotype_PCC(self):
+        alphas_normal,alphas_reduce=self._arch_parameters[0],self._arch_parameters[2]
+        betas_normal,betas_reduce=self._arch_parameters[1],self._arch_parameters[3]
         def _parse(weights, weights2):
             gene = []
             n = 2
             start = 0
-            none_index = PRIMITIVES.index('none')
+            PRIMITIVES_pool = self.config.PRIMITIVES_pool
+            none_index = PRIMITIVES_pool.index('none')
             for i in range(self._steps):
                 end = start + n
                 W = weights[start:end].copy()
@@ -261,16 +261,16 @@ class Network(nn.Module):
                 for j in range(n):
                     W[j, :] = W[j, :]*W2[j]
                 edges = sorted(range(i + 2), key=lambda x: -
-                               max(W[x][k] for k in range(len(W[x])) if k != PRIMITIVES.index('none')))[:2]
+                               max(W[x][k] for k in range(len(W[x])) if k != PRIMITIVES_pool.index('none')))[:2]
 
                 #edges = sorted(range(i + 2), key=lambda x: -W2[x])[:2]
                 for j in edges:
                     k_best = None
                     for k in range(len(W[j])):
-                        if k != PRIMITIVES.index('none'):
+                        if k != PRIMITIVES_pool.index('none'):
                             if k_best is None or W[j][k] > W[j][k_best]:
                                 k_best = k
-                    gene.append((PRIMITIVES[k_best], j))
+                    gene.append((PRIMITIVES_pool[k_best], j))
                 start = end
                 n += 1
             return gene
@@ -278,21 +278,21 @@ class Network(nn.Module):
         
         n = 3
         start = 2
-        weightsr2 = F.softmax(self.betas_reduce[0:2], dim=-1)
-        weightsn2 = F.softmax(self.betas_normal[0:2], dim=-1)
+        weightsr2 = F.softmax(betas_reduce[0:2], dim=-1)
+        weightsn2 = F.softmax(betas_normal[0:2], dim=-1)
         for i in range(self._steps-1):
             end = start + n
-            tw2 = F.softmax(self.betas_reduce[start:end], dim=-1)
-            tn2 = F.softmax(self.betas_normal[start:end], dim=-1)
+            tw2 = F.softmax(betas_reduce[start:end], dim=-1)
+            tn2 = F.softmax(betas_normal[start:end], dim=-1)
             start = end
             n += 1
             weightsr2 = torch.cat([weightsr2, tw2], dim=0)
             weightsn2 = torch.cat([weightsn2, tn2], dim=0)
-        gene_normal = _parse(F.softmax(self.alphas_normal, dim=-1).data.cpu().numpy(), weightsn2.data.cpu().numpy())
-        gene_reduce = _parse(F.softmax(self.alphas_reduce, dim=-1).data.cpu().numpy(), weightsr2.data.cpu().numpy())
-        gene_n1 = _parse_1(F.softmax(self.alphas_normal, dim=-1).data.cpu().numpy(), weightsn2.data.cpu().numpy())
-        gene_r1 = _parse_1(F.softmax(self.alphas_reduce, dim=-1).data.cpu().numpy(), weightsr2.data.cpu().numpy())
-        assert gene_normal==gene_n1 and gene_reduce==gene_r1
+        gene_normal = _parse(F.softmax(alphas_normal, dim=-1).data.cpu().numpy(), weightsn2.data.cpu().numpy())
+        gene_reduce = _parse(F.softmax(alphas_reduce, dim=-1).data.cpu().numpy(), weightsr2.data.cpu().numpy())
+        #gene_n1 = _parse_1(F.softmax(alphas_normal, dim=-1).data.cpu().numpy(), weightsn2.data.cpu().numpy())
+        #gene_r1 = _parse_1(F.softmax(alphas_reduce, dim=-1).data.cpu().numpy(), weightsr2.data.cpu().numpy())
+        #assert gene_normal==gene_n1 and gene_reduce==gene_r1
 
         concat = range(2+self._steps-self._multiplier, self._steps+2)
         genotype = Genotype(

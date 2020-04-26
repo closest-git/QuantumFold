@@ -3,7 +3,7 @@ import torch.nn as nn
 from operations import *
 from torch.autograd import Variable
 #from utils import drop_path
-from Cell import Cell_Commit
+from Cell import Celler
 
 class AuxiliaryHeadCIFAR(nn.Module):
 

@@ -107,7 +107,7 @@ def dump_genotype(model,logging):
   PRIMITIVES_pool = model.config.PRIMITIVES_pool
   genotype = model.genotype()
   logging.info('genotype = %s', genotype)
-  genotype_1 = model.cells[0].weight2gene()
+  genotype_1 = model.cells[1].weight2gene()
   assert genotype_1 in genotype
   alphas_normal = model._arch_parameters[0]
   alphas_normal = F.softmax(alphas_normal, dim=-1).detach().cpu().numpy()

@@ -55,17 +55,21 @@ class StemCell(nn.Module):
             else:
                 return [self.alphas_]
 
-    def __init__(self,config, steps, multiplier, C_prev_prev, C_prev, C, reduction, reduction_prev):
+    #def __init__(self,config, steps, multiplier, C_prev_prev, C_prev, C, reduction, reduction_prev):
+    def __init__(self,config,steps, multiplier, cells, C, reduction, reduction_prev):
         super(StemCell, self).__init__()
+        assert(len(cells)>=1)
+        self.nChanel = multiplier*C
+        self.reduction = reduction
+        if len(cells)==1:
+            C_prev_prev, C_prev = cells[-1].nChanel,cells[-1].nChanel
+        else:
+            C_prev_prev, C_prev = cells[-2].nChanel,cells[-1].nChanel
+
         self.config = config
         self.reduction = reduction
-        self.weight=None
+        self.weight=None        
 
-        # if reduction_prev:
-        #     self.preprocess0 = FactorizedReduce(C_prev_prev, C, affine=False)
-        # else:
-        #     self.preprocess0 = ReLUConvBN(C_prev_prev, C, 1, 1, 0, affine=False)
-        # self.preprocess1 = ReLUConvBN(C_prev, C, 1, 1, 0, affine=False)
         if self.config.primitive == "p2":
             if reduction_prev:
                 self.preprocess0 = FactorizedReduce(C_prev_prev, C, affine=False)

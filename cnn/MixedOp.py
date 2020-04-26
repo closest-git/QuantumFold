@@ -125,7 +125,7 @@ class MixedOp_PCC(nn.Module):
         self.mp = nn.MaxPool2d(2, 2)
         self.config = config
 
-        for primitive in PRIMITIVES:
+        for primitive in self.config.PRIMITIVES_pool: #PRIMITIVES
             op = OPS[primitive](C // 4, stride, False)
             if 'pool' in primitive:
                 op = nn.Sequential(op, nn.BatchNorm2d(C // 4, affine=False))

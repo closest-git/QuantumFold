@@ -70,7 +70,8 @@ class Network(nn.Module):
             self._initialize_alphas()
         share = "" if self.config.weight_share else "***"
         attention = self.config.attention[0:3]
-        self.title = f"\"{self.config.weights}{share}_{self.config.op_struc}_{self.config.primitive}_{attention}\""
+        express = self.config.cell_express
+        self.title = f"\"{self.config.weights}_{express}{share}_{self.config.op_struc}_{self.config.primitive}_{attention}\""
         print("")
 
     def new(self):
@@ -79,43 +80,28 @@ class Network(nn.Module):
             x.data.copy_(y.data)
         return model_new
 
-    def forward_V1(self, input):
-        # t0=time.time()
-        if hasattr(self,"stem"):
+    
+    def forward(self, input):
+        if hasattr(self,"stem"):    #建议删除stem，应该合并到cells
             s0 = s1 = self.stem(input)
         else:
             s0,s1=None,None
- 
-        self.UpdateWeights()
-        for i, cell in enumerate(self.cells):
-            if s0 is None:
-               s0 = s1 = cell(input) 
-            else:
-                s0, s1 = s1, cell(s0, s1)            
-        out = self.global_pooling(s1)
-        logits = self.classifier(out.view(out.size(0), -1))
-        #print(f"Network::forward T={time.time()-t0:.3f}")
-        return logits
-    
-    def forward(self, input):
-        if self.config.op_struc != "darts":
-            return self.forward_V1(input)
 
-        s0,s1 = None,None #self.stem(input)
         self.UpdateWeights()
         attention_func= F.softmax if self.config.attention == "softmax" else entmax15
-
+        all_s=[]
         for i, cell in enumerate(self.cells):
-            if False:
-                if cell.reduction:
-                    weights = attention_func(self.alphas_reduce, dim=-1)
-                else:
-                    weights = attention_func(self.alphas_normal, dim=-1)
-                s0, s1 = s1, cell(s0, s1, weights)
             if s0 is None:
                s0 = s1 = cell(input) 
+               all_s.extend([s0,s1])
             else:
-                s0, s1 = s1, cell(s0, s1)
+                result = cell(all_s)
+                if self.config.cell_express=="dense":
+                    pass                   
+                else:       #DARTS只使用前两个cell
+                    #s0, s1 = s1, cell(s0, s1)
+                    s0, s1 = s1, result
+                all_s.append(result)
         out = self.global_pooling(s1)
         logits = self.classifier(out.view(out.size(0),-1))
         return logits    
@@ -234,7 +220,9 @@ class Network(nn.Module):
                 n += 1
             return gene
         #alphas_normal,alphas_reduce=self.alphas_normal,self.alphas_reduce
-        alphas_normal,alphas_reduce=self._arch_parameters[0],self._arch_parameters[2]
+        if self.config.weight_share:
+            assert len(self._arch_parameters)==2
+        alphas_normal,alphas_reduce=self._arch_parameters[0],self._arch_parameters[1]
         gene_normal = _parse(F.softmax(alphas_normal, dim=-1).data.cpu().numpy())
         gene_reduce = _parse(F.softmax(alphas_reduce, dim=-1).data.cpu().numpy())
 
@@ -246,6 +234,8 @@ class Network(nn.Module):
         return genotype
 
     def genotype_PCC(self):
+        if self.config.weight_share:
+            assert len(self._arch_parameters)==4
         alphas_normal,alphas_reduce=self._arch_parameters[0],self._arch_parameters[2]
         betas_normal,betas_reduce=self._arch_parameters[1],self._arch_parameters[3]
         def _parse(weights, weights2):

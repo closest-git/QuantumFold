@@ -54,7 +54,7 @@ class Experiment:
         self.optimizer = optimizer
         self.objective_metric = objective_metric
         self.device = config.device
-        self.model.to(self.device)
+        #self.model.to(self.device)
 
     def isKeepWarm(self):
         isKeep = False if self.config.warm_up==0 else True

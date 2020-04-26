@@ -1,7 +1,7 @@
 '''
 @Author: Yingshi Chen
 @Date: 2020-02-14 11:59:10
-@LastEditTime: 2020-04-26 10:04:07
+@LastEditTime: 2020-04-26 10:56:03
 @LastEditors: Please set LastEditors
 @Description: In User Settings Edit
 @FilePath: \QuantumForest\python-package\quantum_forest\QForest.py
@@ -38,6 +38,7 @@ class QuantumFold_config:
         self.attention = "softmax"         #"entmax" 
         self.weight_share = True          #True
         self.warm_up = 50
+        self.cell_express = ""         #""
         
         self.err_relative = False
         self.task = "train"

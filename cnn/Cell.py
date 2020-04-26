@@ -102,7 +102,9 @@ class StemCell(nn.Module):
                 self._ops.append(op)
 
         
-    def forward(self, s0, s1, weights=None, weights2=None):
+    #def forward(self, s0, s1, weights=None, weights2=None):
+    def forward(self, results):
+        assert len(results)>=2
         if self.config.weights == "cys":
             [weights,weights2] = self.weight.get_weight()
         else:
@@ -110,21 +112,19 @@ class StemCell(nn.Module):
                 weights = self.weights
             if weights2 is None:
                 weights2 = self.weights2
-
-        s0 = self.preprocess0(s0)
-        s1 = self.preprocess1(s1)
+        if True:
+            #s0 = self.preprocess0(s0);            s1 = self.preprocess1(s1)
+            s0 = self.preprocess0(results[-2]);    s1 = self.preprocess1(results[-1])
+        else:
+            pass
 
         states = [s0, s1]
         offset = 0
         for i in range(self._steps):
-            if False:   #确实不行 
-                no = random.sample(range(len(states)), 1)[0]
-                s = self._ops[offset+no](states[no], weights[offset+no]) 
+            if weights2 is not None:
+                s = sum(weights2[offset+j]*self._ops[offset+j](h, weights[offset+j]) for j, h in enumerate(states))
             else:
-                if weights2 is not None:
-                    s = sum(weights2[offset+j]*self._ops[offset+j](h, weights[offset+j]) for j, h in enumerate(states))
-                else:
-                    s = sum(self._ops[offset+j](h, weights[offset+j]) for j, h in enumerate(states))
+                s = sum(self._ops[offset+j](h, weights[offset+j]) for j, h in enumerate(states))
             offset += len(states)
             states.append(s)
 

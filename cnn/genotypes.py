@@ -114,8 +114,12 @@ def dump_genotype(model,logging):
   nRow, nCol = alphas_normal.shape    
   for r in range(nRow):
     ids = sorted(range(nCol), key=lambda c: -alphas_normal[r,c]) 
+    w0 = alphas_normal[r,ids[0]]
     for c in ids:
-      print(f"{PRIMITIVES_pool[c]}={alphas_normal[r,c]:.4f}\t",end="")
+        if w0==alphas_normal[r,c]:
+            print(f"{PRIMITIVES_pool[c]}\t",end="")
+        else:
+            print(f"{PRIMITIVES_pool[c]}-{w0-alphas_normal[r,c]:.3f} ",end="")
     print("")
   # print(alphas_normal)
   if False:

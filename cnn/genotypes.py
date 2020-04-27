@@ -101,6 +101,9 @@ S_CYS_cifar = Genotype(
     normal=[('DepthConv_3', 1), ('DepthConv_3', 0), ('DepthConv_3', 1), ('Conv_3', 2), ('Conv_3', 3), ('Conv_3', 2), ('DepthConv_3', 0), ('DepthConv_3', 1)], normal_concat=range(2, 6),
     reduce=[('max_pool_3x3', 0), ('max_pool_3x3', 1), ('Conv_3', 2), ('max_pool_3x3', 0), ('Conv_3', 3), ('Conv_3', 2), ('Conv_3', 4), ('Conv_3', 3)], reduce_concat=range(2, 6))
 
+_CYS_cifar_nocat = Genotype(    #有问题
+    normal=[('DepthConv_3', 1), ('Conv_3', 0), ('DepthConv_3', 2), ('DepthConv_3', 1), ('DepthConv_3', 3), ('DepthConv_3', 1), ('DepthConv_3', 3), ('DepthConv_3', 2)], normal_concat=[5], 
+    reduce=[('max_pool_3x3', 0), ('max_pool_3x3', 1), ('max_pool_3x3', 0), ('max_pool_3x3', 1), ('max_pool_3x3', 0), ('max_pool_3x3', 1), ('Conv_3', 4), ('Conv_3', 3)], reduce_concat=[5])
 
 def dump_genotype(model,logging):
   print("=================="*6)

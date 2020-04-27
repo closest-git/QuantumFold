@@ -73,7 +73,7 @@ def main():
   logging.info('gpu device = %d' % args.gpu)
   logging.info("args = %s", args)
 
-  args.arch='S_CYS_cifar'
+  args.arch = 'S_CYS_cifar'
   genotype = eval("genotypes.%s" % args.arch)
   print(f"======args={args}\n")
   print(f"======genotype={genotype}\n")

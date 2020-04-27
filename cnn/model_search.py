@@ -36,7 +36,9 @@ class Network(nn.Module):
         self._layers = layers
         self._criterion = criterion
         self._steps = steps     #number of nodes in each cell
-        self._multiplier = multiplier
+        #self._multiplier = multiplier      #该设计不是很好
+        self._concat = list(range(2+self._steps-multiplier, self._steps+2))
+        #self._concat = [2+self._steps-1]   #有问题
         
         if False:
             C_curr = stem_multiplier*C
@@ -56,7 +58,7 @@ class Network(nn.Module):
             else:
                 reduction = False
             #cell = StemCell(config,steps, multiplier, C_prev_prev, C_prev,C_curr, reduction, reduction_prev)
-            cell = StemCell(config,steps, multiplier, self.cells,C_curr, reduction, reduction_prev)
+            cell = StemCell(config,steps, self._concat, self.cells,C_curr, reduction, reduction_prev)
             reduction_prev = reduction
             self.cells += [cell]
             #C_prev_prev, C_prev = C_prev, multiplier*C_curr
@@ -71,7 +73,7 @@ class Network(nn.Module):
         share = "" if self.config.weight_share else "***"
         attention = self.config.attention[0:3]
         express = self.config.cell_express
-        self.title = f"\"{self.config.weights}_{express}{share}_{self.config.op_struc}_{self.config.primitive}_{attention}\""
+        self.title = f"\"{self.config.weights}_{express}{share}_{self._concat}_{self.config.op_struc}_{self.config.primitive}_{attention}\""
         print("")
 
     def new(self):
@@ -226,7 +228,7 @@ class Network(nn.Module):
         gene_normal = _parse(F.softmax(alphas_normal, dim=-1).data.cpu().numpy())
         gene_reduce = _parse(F.softmax(alphas_reduce, dim=-1).data.cpu().numpy())
 
-        concat = range(2+self._steps-self._multiplier, self._steps+2)
+        concat = self._concat   #range(2+self._steps-self._multiplier, self._steps+2)
         genotype = Genotype(
             normal=gene_normal, normal_concat=concat,
             reduce=gene_reduce, reduce_concat=concat
@@ -284,7 +286,7 @@ class Network(nn.Module):
         #gene_r1 = _parse_1(F.softmax(alphas_reduce, dim=-1).data.cpu().numpy(), weightsr2.data.cpu().numpy())
         #assert gene_normal==gene_n1 and gene_reduce==gene_r1
 
-        concat = range(2+self._steps-self._multiplier, self._steps+2)
+        concat = self._concat   #range(2+self._steps-self._multiplier, self._steps+2)
         genotype = Genotype(
             normal=gene_normal, normal_concat=concat,
             reduce=gene_reduce, reduce_concat=concat

@@ -56,10 +56,11 @@ class StemCell(nn.Module):
                 return [self.alphas_]
 
     #def __init__(self,config, steps, multiplier, C_prev_prev, C_prev, C, reduction, reduction_prev):
-    def __init__(self,config,steps, multiplier, cells, C, reduction, reduction_prev):
+    def __init__(self,config,steps, _concat, cells, C, reduction, reduction_prev):
         super(StemCell, self).__init__()
         assert(len(cells)>=1)
-        self.nChanel = multiplier*C
+        self._concat = _concat
+        self.nChanel = len(self._concat)*C
         self.reduction = reduction
         if len(cells)==1:
             C_prev_prev, C_prev = cells[-1].nChanel,cells[-1].nChanel
@@ -84,7 +85,7 @@ class StemCell(nn.Module):
             self.preprocess1 = ReLUConvBN(C_prev, C, 1, 1, 0, affine=False)
 
         self._steps = steps
-        self._multiplier = multiplier
+        #self._multiplier = multiplier
 
         self._ops = nn.ModuleList()
         self._bns = nn.ModuleList()
@@ -100,7 +101,6 @@ class StemCell(nn.Module):
                     #op = BinaryOP(C, stride)
 
                 self._ops.append(op)
-
         
     #def forward(self, s0, s1, weights=None, weights2=None):
     def forward(self, results):
@@ -127,8 +127,8 @@ class StemCell(nn.Module):
                 s = sum(self._ops[offset+j](h, weights[offset+j]) for j, h in enumerate(states))
             offset += len(states)
             states.append(s)
-
-        return torch.cat(states[-self._multiplier:], dim=1)
+        return torch.cat([states[id] for id in self._concat], dim=1)
+        #return torch.cat(states[-self._multiplier:], dim=1)
     
     def UpdateAttention(self,alpha,beta):
         if self.reduction:

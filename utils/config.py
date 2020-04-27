@@ -1,10 +1,9 @@
 '''
 @Author: Yingshi Chen
+
 @Date: 2020-02-14 11:59:10
-@LastEditTime: 2020-04-26 10:56:03
-@LastEditors: Please set LastEditors
-@Description: In User Settings Edit
-@FilePath: \QuantumForest\python-package\quantum_forest\QForest.py
+@
+# Description: 
 '''
 class QuantumFold_config:
     def __init__(self,data,random_seed=42):
@@ -32,13 +31,13 @@ class QuantumFold_config:
         self.plot_train = False
         self.plot_attention = True
 
-        self.op_struc = "PCC"           #"PCC" "darts" "pair"
+        self.op_struc = "darts"           #"PCC" "darts" "pair"
         self.weights = "cys"              #"cys"  
         self.primitive = "p1"              #"p0"    "p1"  "p1"   "c0"
         self.attention = "softmax"         #"entmax" 
-        self.weight_share = True          #True
-        self.warm_up = 50
-        self.cell_express = ""         #""
+        self.weight_share = True            #True
+        self.warm_up = 0
+        self.cell_express = ""              #""
         
         self.err_relative = False
         self.task = "train"

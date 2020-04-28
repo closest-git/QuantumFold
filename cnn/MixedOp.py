@@ -55,18 +55,25 @@ class MixedOp(nn.Module):
     def __repr__(self):
         return self.desc
 
-class BinaryOP(MixedOp):
-    def __init__(self, C, stride):
-        super(BinaryOP, self).__init__(C, stride)        
-        self.desc = f"BinaryOP_{len(self._ops)}_C{C}_stride{stride}"
+class MixedOp_se(MixedOp):
+    def __init__(self,config, C, stride,cell):
+        super(MixedOp_se, self).__init__(config, C, stride)      
+        self.cell = cell     
+        nOP = len(self._ops)   
+        self.desc = f"SE_op_{nOP}_C{C}_stride{stride}"
 
     def forward(self, x, weights):
+        se_op = self.cell.weight.se_op
+        assert se_op is not None
         nOP = len(self._ops)
-        no_1,no_2= random.sample(range(nOP), 2)
-        s1 = weights[no_1]  #/(weights[no_1]+weights[no_2])
-        s2 = weights[no_2]  #/(weights[no_1]+weights[no_2])
-        return s1*self._ops[no_1](x)+s2*self._ops[no_2](x)
-        #return sum(w * op(x) for w, op in zip(weights, self._ops))
+        b, c, _, _ = x.size()
+
+        opx_list = []
+        for op in self._ops:
+            opx = op(x)            
+            opx_list.append(opx)
+        out = se_op(opx_list) 
+        return out
 
 class MixedOp_pair(nn.Module):
     def __init__(self,config, C, stride):

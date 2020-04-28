@@ -178,14 +178,14 @@ class Network(nn.Module):
         nOP = len(self.config.PRIMITIVES_pool)
         nNode = sum(1 for i in range(self._steps) for n in range(2+i))
         if isShare:
-            w_normal = StemCell.OP_weights(self.config,nOP,self.topo_darts)
-            w_reduce = StemCell.OP_weights(self.config,nOP,self.topo_darts)
+            w_normal = ATT_weights(self.config,nOP,self.topo_darts)
+            w_reduce = ATT_weights(self.config,nOP,self.topo_darts)
             self._arch_parameters.extend(w_normal.get_param())
             self._arch_parameters.extend(w_reduce.get_param())
         nReduct,nNormal=0,0
         for i, cell in enumerate(self.cells):   
             if not isShare:
-                w_cell = StemCell.OP_weights(self.config,nOP,self._steps)
+                w_cell = ATT_weights(self.config,nOP,self._steps)
                 self._arch_parameters.extend(w_cell.get_param())
             if cell.reduction:                
                 cell.weight = w_reduce if isShare else w_cell

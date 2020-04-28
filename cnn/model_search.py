@@ -37,7 +37,9 @@ class Network(nn.Module):
         self._criterion = criterion
         self._steps = steps     #number of nodes in each cell
         #self._multiplier = multiplier      #该设计不是很好
-        self._concat = list(range(2+self._steps-multiplier, self._steps+2))
+        _concat = list(range(2+self._steps-multiplier, self._steps+2))
+        self.topo_darts = TopoStruc(self._steps,_concat)    #always has 4 nodes
+        #self._concat = list(range(2+self._steps-multiplier, self._steps+2))
         #self._concat = [2+self._steps-1]   #有问题
         
         if False:
@@ -58,7 +60,8 @@ class Network(nn.Module):
             else:
                 reduction = False
             #cell = StemCell(config,steps, multiplier, C_prev_prev, C_prev,C_curr, reduction, reduction_prev)
-            cell = StemCell(config,steps, self._concat, self.cells,C_curr, reduction, reduction_prev)
+            topo = self.topo_darts
+            cell = StemCell(config,steps, topo, self.cells,C_curr, reduction, reduction_prev)
             reduction_prev = reduction
             self.cells += [cell]
             #C_prev_prev, C_prev = C_prev, multiplier*C_curr
@@ -73,7 +76,7 @@ class Network(nn.Module):
         share = "" if self.config.weight_share else "***"
         attention = self.config.attention[0:3]
         express = self.config.cell_express
-        self.title = f"\"{self.config.weights}_{express}{share}_{self._concat}_{self.config.op_struc}_{self.config.primitive}_{attention}\""
+        self.title = f"\"{self.config.weights}_{express}{share}_{self.topo_darts.legend}_{self.config.op_struc}_{self.config.primitive}_{attention}\""
         print("")
 
     def new(self):
@@ -170,13 +173,13 @@ class Network(nn.Module):
             self._arch_parameters.append(self.betas_reduce)  
 
     def _initialize_weights(self):
-        self._arch_parameters=[]
+        self._arch_parameters=[]        
         isShare = self.config.weight_share
         nOP = len(self.config.PRIMITIVES_pool)
         nNode = sum(1 for i in range(self._steps) for n in range(2+i))
         if isShare:
-            w_normal = StemCell.OP_weights(self.config,nOP,self._steps)
-            w_reduce = StemCell.OP_weights(self.config,nOP,self._steps)
+            w_normal = StemCell.OP_weights(self.config,nOP,self.topo_darts)
+            w_reduce = StemCell.OP_weights(self.config,nOP,self.topo_darts)
             self._arch_parameters.extend(w_normal.get_param())
             self._arch_parameters.extend(w_reduce.get_param())
         nReduct,nNormal=0,0
@@ -228,7 +231,7 @@ class Network(nn.Module):
         gene_normal = _parse(F.softmax(alphas_normal, dim=-1).data.cpu().numpy())
         gene_reduce = _parse(F.softmax(alphas_reduce, dim=-1).data.cpu().numpy())
 
-        concat = self._concat   #range(2+self._steps-self._multiplier, self._steps+2)
+        concat = self.topo_darts._concat   #range(2+self._steps-self._multiplier, self._steps+2)
         genotype = Genotype(
             normal=gene_normal, normal_concat=concat,
             reduce=gene_reduce, reduce_concat=concat
@@ -286,7 +289,7 @@ class Network(nn.Module):
         #gene_r1 = _parse_1(F.softmax(alphas_reduce, dim=-1).data.cpu().numpy(), weightsr2.data.cpu().numpy())
         #assert gene_normal==gene_n1 and gene_reduce==gene_r1
 
-        concat = self._concat   #range(2+self._steps-self._multiplier, self._steps+2)
+        concat = self.topo_darts._concat   #range(2+self._steps-self._multiplier, self._steps+2)
         genotype = Genotype(
             normal=gene_normal, normal_concat=concat,
             reduce=gene_reduce, reduce_concat=concat

@@ -27,6 +27,9 @@ class Network(nn.Module):
         
         def weight2gene(self):
             return "stem_01_{self.nChanel}_{self.reduction}"
+        
+        def init_weight(self):
+            pass
 
     def __init__(self,config, C, num_classes, layers, criterion, steps=4, multiplier=4, stem_multiplier=3):
         super(Network, self).__init__()
@@ -85,6 +88,7 @@ class Network(nn.Module):
             x.data.copy_(y.data)
         return model_new
 
+    
     
     def forward(self, input):
         if hasattr(self,"stem"):    #建议删除stem，应该合并到cells
@@ -171,29 +175,48 @@ class Network(nn.Module):
             self.betas_reduce = Variable(1e-3*torch.randn(k).cuda(), requires_grad=True)
             self._arch_parameters.append(self.betas_normal)
             self._arch_parameters.append(self.betas_reduce)  
+    
+    def NewATT_weights(self,nOP):
+        ATT_weight = ATT_weights(self.config,nOP,self.topo_darts)            
+        self._arch_parameters.extend(ATT_weight.get_param())
+        self.listWeight.append(ATT_weight)
+        return ATT_weight
 
     def _initialize_weights(self):
+        self.listWeight = []
         self._arch_parameters=[]        
         isShare = self.config.weight_share
         nOP = len(self.config.PRIMITIVES_pool)
         nNode = sum(1 for i in range(self._steps) for n in range(2+i))
         if isShare:
-            w_normal = ATT_weights(self.config,nOP,self.topo_darts)
-            w_reduce = ATT_weights(self.config,nOP,self.topo_darts)
-            self._arch_parameters.extend(w_normal.get_param())
-            self._arch_parameters.extend(w_reduce.get_param())
+            w_normal = self.NewATT_weights(nOP)
+            w_reduce = self.NewATT_weights(nOP)
+            # w_normal = ATT_weights(self.config,nOP,self.topo_darts)
+            # w_reduce = ATT_weights(self.config,nOP,self.topo_darts)
+            # self._arch_parameters.extend(w_normal.get_param())
+            # self._arch_parameters.extend(w_reduce.get_param())
         nReduct,nNormal=0,0
         for i, cell in enumerate(self.cells):   
             if not isShare:
-                w_cell = ATT_weights(self.config,nOP,self._steps)
-                self._arch_parameters.extend(w_cell.get_param())
+                # w_cell = ATT_weights(self.config,nOP,self._steps)
+                # self._arch_parameters.extend(w_cell.get_param())
+                w_cell = self.NewATT_weights(nOP)
             if cell.reduction:                
                 cell.weight = w_reduce if isShare else w_cell
                 nReduct=nReduct+1
             else:
                 cell.weight = w_normal if isShare else w_cell
                 nNormal=nNormal+1
+            cell.init_weight()
         print(f"====== _arch_parameters={len(self._arch_parameters)} nReduct={nReduct} nNormal={nNormal}")                          
+
+    def BeforeEpoch(self):
+        for ATT_weight in self.listWeight:
+            ATT_weight.BeforeEpoch()
+
+    def AfterEpoch(self):
+        for ATT_weight in self.listWeight:
+            ATT_weight.AfterEpoch()
 
     def arch_parameters(self):
         nzParam = sum(p.numel() for p in self._arch_parameters)
@@ -204,6 +227,8 @@ class Network(nn.Module):
     def genotype(self):
         if self.config.op_struc == "PCC":
             return self.genotype_PCC()
+        
+        return ""
 
         def _parse(weights):
             PRIMITIVES_pool = self.config.PRIMITIVES_pool

@@ -107,6 +107,8 @@ _CYS_cifar_nocat = Genotype(    #有问题
 
 def dump_genotype(model,logging):
   print("=================="*6)
+  return
+  
   PRIMITIVES_pool = model.config.PRIMITIVES_pool
   genotype = model.genotype()
   logging.info('genotype = %s', genotype)

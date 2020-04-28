@@ -40,6 +40,10 @@ class TopoStruc():
         p0,p1 = self.hGraph[id],self.hGraph[id+1]
         #print(range(p0,p1))
         return range(p0,p1)
+    
+    def nMostEdge(self):
+        return self.hGraph[self.nNode]
+    
 
 '''
     有趣的干细胞
@@ -93,24 +97,29 @@ class StemCell(nn.Module):
                 elif self.config.op_struc == "pair":
                     op = MixedOp_pair(config,C, stride)
                 elif self.config.op_struc == "se":
-                    op = MixedOp_se(config,C, stride,None)
+                    op = MixedOp_se(config,C, stride)
                 else:
                     op = MixedOp(config,C, stride)
 
                 self._ops.append(op)
-    
+
+    def init_weight(self):
+        nOP = len(self._ops)
+        if self.config.op_struc == "se":
+            assert nOP == len(self.weight.nets)
+            for i,op in enumerate(self._ops):
+                op.se_op = self.weight.nets[i]
+        pass
 
 
     #def forward(self, s0, s1, weights=None, weights2=None):
     def forward(self, results):
         assert len(results)>=2
-        if self.config.weights == "cys":
+        if self.config.op_struc != "se": 
             [weights,weights2] = self.weight.get_weight()
         else:
-            if weights is None:
-                weights = self.weights
-            if weights2 is None:
-                weights2 = self.weights2
+            weights,weights2 = None,None
+
         if True:
             #s0 = self.preprocess0(s0);            s1 = self.preprocess1(s1)
             s0 = self.preprocess0(results[-2]);    s1 = self.preprocess1(results[-1])
@@ -122,8 +131,11 @@ class StemCell(nn.Module):
         for i in range(self._steps):
             if weights2 is not None:
                 s = sum(weights2[offset+j]*self._ops[offset+j](h, weights[offset+j]) for j, h in enumerate(states))
-            else:
+            elif weights is not None:
                 s = sum(self._ops[offset+j](h, weights[offset+j]) for j, h in enumerate(states))
+            else:
+                s = sum(self._ops[offset+j](h) for j, h in enumerate(states))
+
             offset += len(states)
             states.append(s)
         out = torch.cat([states[id] for id in self._concat], dim=1)

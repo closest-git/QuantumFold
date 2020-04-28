@@ -62,6 +62,13 @@ class se_operate(nn.Module):
     def __repr__(self):
         return self.desc
 
+    def BeforeEpoch(self):
+        self.nStep = 0
+        self.alpha = torch.zeros(self.nOP)
+    
+    def AfterEpoch(self):
+        self.alpha=self.alpha/self.nStep
+
     #elegant code from https://github.com/moskomule/senet.pytorch/blob/master/senet/se_module.py
     def forward(self, listOPX):
         assert len(listOPX)==self.nOP
@@ -71,10 +78,14 @@ class se_operate(nn.Module):
             y_list.append(y)
         y = torch.stack( y_list ,dim=1) 
         w = self.fc(y)
+        m_ = torch.mean(w,dim=0) 
+        self.alpha = self.alpha+ m_.cpu()
+        self.nStep = self.nStep+1
         out = 0
         for i,opx in enumerate(listOPX):
             w_i = w[:,i:i+1].squeeze()
-            out = out+torch.einsum('bcxy,b->bcxy',opx,w_i)            
+            out = out+torch.einsum('bcxy,b->bcxy',opx,w_i)          
+        
         return out
 
 #多个cell之间可共用weight!!!
@@ -82,17 +93,27 @@ class ATT_weights(object):
     def __init__(self,config, nOP,topo):
         super(ATT_weights, self).__init__()
         self.config = config
-        self.se_op = None
+        self.nets = None
         self.topo = topo
         self.hasBeta = self.config.op_struc == "PCC" or  self.config.op_struc == "pair"
         #k = sum(1 for i in range(self.nNode) for n in range(2+i))            
         k = self.topo.hGraph[-1]
         if self.config.op_struc=="se":
-            self.se_op = se_operate(nOP)
+            self.nets = [se_operate(nOP) for i in range(self.topo.nMostEdge())]
         else:
             self.alphas_ = Variable(1e-3*torch.randn((k,nOP)).cuda(), requires_grad=True)
             if self.hasBeta:
                 self.betas_ = Variable(1e-3*torch.randn(k).cuda(), requires_grad=True)  
+
+    def BeforeEpoch(self):
+        if self.config.op_struc=="se":
+            for net in self.nets:
+                net.BeforeEpoch()
+
+    def AfterEpoch(self):
+        if self.config.op_struc=="se":
+            for net in self.nets:
+                net.AfterEpoch()
 
     def get_weight(self):
         w_a,w_b = F.softmax(self.alphas_, dim=-1),None
@@ -149,7 +170,15 @@ class ATT_weights(object):
         return gene
     
     def get_param(self):
+        param_list = []
+        if self.nets is not None:
+            for net in self.nets:
+                for name, param in net.named_parameters():
+                    param_list.append(param)         
+            return param_list   
         if self.hasBeta:
             return [self.alphas_,self.betas_]
         else:
             return [self.alphas_]
+
+        

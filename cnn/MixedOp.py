@@ -56,15 +56,14 @@ class MixedOp(nn.Module):
         return self.desc
 
 class MixedOp_se(MixedOp):
-    def __init__(self,config, C, stride,cell):
-        super(MixedOp_se, self).__init__(config, C, stride)      
-        self.cell = cell     
+    def __init__(self,config, C, stride):
+        super(MixedOp_se, self).__init__(config, C, stride)  
         nOP = len(self._ops)   
         self.desc = f"SE_op_{nOP}_C{C}_stride{stride}"
 
-    def forward(self, x, weights):
-        se_op = self.cell.weight.se_op
-        assert se_op is not None
+    def forward(self, x):        
+        assert hasattr(self,'se_op')
+        se_net = self.se_op
         nOP = len(self._ops)
         b, c, _, _ = x.size()
 
@@ -72,7 +71,7 @@ class MixedOp_se(MixedOp):
         for op in self._ops:
             opx = op(x)            
             opx_list.append(opx)
-        out = se_op(opx_list) 
+        out = se_net(opx_list) 
         return out
 
 class MixedOp_pair(nn.Module):

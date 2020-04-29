@@ -101,40 +101,43 @@ S_CYS_cifar = Genotype(
     normal=[('DepthConv_3', 1), ('DepthConv_3', 0), ('DepthConv_3', 1), ('Conv_3', 2), ('Conv_3', 3), ('Conv_3', 2), ('DepthConv_3', 0), ('DepthConv_3', 1)], normal_concat=range(2, 6),
     reduce=[('max_pool_3x3', 0), ('max_pool_3x3', 1), ('Conv_3', 2), ('max_pool_3x3', 0), ('Conv_3', 3), ('Conv_3', 2), ('Conv_3', 4), ('Conv_3', 3)], reduce_concat=range(2, 6))
 
-_CYS_cifar_nocat = Genotype(    #有问题
-    normal=[('DepthConv_3', 1), ('Conv_3', 0), ('DepthConv_3', 2), ('DepthConv_3', 1), ('DepthConv_3', 3), ('DepthConv_3', 1), ('DepthConv_3', 3), ('DepthConv_3', 2)], normal_concat=[5], 
+_CYS_cifar_nocat = Genotype(  # 有问题
+    normal=[('DepthConv_3', 1), ('Conv_3', 0), ('DepthConv_3', 2), ('DepthConv_3', 1), ('DepthConv_3', 3), ('DepthConv_3', 1), ('DepthConv_3', 3), ('DepthConv_3', 2)], normal_concat=[5],
     reduce=[('max_pool_3x3', 0), ('max_pool_3x3', 1), ('max_pool_3x3', 0), ('max_pool_3x3', 1), ('max_pool_3x3', 0), ('max_pool_3x3', 1), ('Conv_3', 4), ('Conv_3', 3)], reduce_concat=[5])
 
-def dump_genotype(model,logging):
-  print("=================="*6)
-  return
-  
-  PRIMITIVES_pool = model.config.PRIMITIVES_pool
-  genotype = model.genotype()
-  logging.info('genotype = %s', genotype)
-  genotype_1 = model.cells[1].weight2gene()
-  assert genotype_1 in genotype
-  alphas_normal = model._arch_parameters[0]
-  alphas_normal = F.softmax(alphas_normal, dim=-1).detach().cpu().numpy()
-  nRow, nCol = alphas_normal.shape    
-  for r in range(nRow):
-    ids = sorted(range(nCol), key=lambda c: -alphas_normal[r,c]) 
-    w0 = alphas_normal[r,ids[0]]
-    for c in ids:
-        if w0==alphas_normal[r,c]:
-            print(f"{PRIMITIVES_pool[c]}\t",end="")
-        else:
-            print(f"{PRIMITIVES_pool[c]}-{w0-alphas_normal[r,c]:.3f} ",end="")
-    print("")
-  # print(alphas_normal)
-  if False:
-    values, indices = torch.max(alphas_normal, 1)
-    for val, typ in zip(values, indices):
-        PRIMITIVE = model.config.PRIMITIVES_pool[typ.item()]
-        print(f"\"{PRIMITIVE}\"={val.item():.4f},", end="")
-  if not model.config.weight_share:
-    for id,cell in enumerate(model.cells):
-      gene = cell.weight2gene()
-      print(f"cell_{id}\t{gene}")
-  
-  print("=================="*6)
+
+def dump_genotype(model, logging):
+    print("=================="*6)
+    PRIMITIVES_pool = model.config.PRIMITIVES_pool
+    genotype,isValid = model.genotype()
+    if not isValid:
+        return
+
+    logging.info('genotype = %s', genotype)
+    genotype_1 = model.cells[1].weight2gene()
+    assert genotype_1 in genotype
+    alphas_normal = model._arch_parameters[0]
+    alphas_normal = F.softmax(alphas_normal, dim=-1).detach().cpu().numpy()
+    nRow, nCol = alphas_normal.shape
+    for r in range(nRow):
+        ids = sorted(range(nCol), key=lambda c: -alphas_normal[r, c])
+        w0 = alphas_normal[r, ids[0]]
+        for c in ids:
+            if w0 == alphas_normal[r, c]:
+                print(f"{PRIMITIVES_pool[c]}\t", end="")
+            else:
+                print(
+                    f"{PRIMITIVES_pool[c]}-{w0-alphas_normal[r,c]:.3f} ", end="")
+        print("")
+    # print(alphas_normal)
+    if False:
+        values, indices = torch.max(alphas_normal, 1)
+        for val, typ in zip(values, indices):
+            PRIMITIVE = model.config.PRIMITIVES_pool[typ.item()]
+            print(f"\"{PRIMITIVE}\"={val.item():.4f},", end="")
+    if not model.config.weight_share:
+        for id, cell in enumerate(model.cells):
+            gene = cell.weight2gene()
+            print(f"cell_{id}\t{gene}")
+
+    print("=================="*6)

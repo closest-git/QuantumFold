@@ -106,7 +106,7 @@ def main():
     criterion = criterion.cuda()
     model = Network(config, args.init_channels,CIFAR_CLASSES, args.layers, criterion)
     print(model)
-    # dump_model_params(model)
+    #dump_model_params(model)
     model = model.cuda()
     model.visual =  Visdom_Visualizer(env_title=f"{args.set}_{model.title}")
     model.visual.img_dir = "./results/images/"

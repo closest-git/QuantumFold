@@ -176,8 +176,8 @@ class Network(nn.Module):
             self._arch_parameters.append(self.betas_normal)
             self._arch_parameters.append(self.betas_reduce)  
     
-    def NewATT_weights(self,nOP):
-        ATT_weight = ATT_weights(self.config,nOP,self.topo_darts)            
+    def NewATT_weights(self,nOP,isReduce):
+        ATT_weight = ATT_weights(self.config,nOP,self.topo_darts,isReduce)            
         self._arch_parameters.extend(ATT_weight.get_param())
         self.listWeight.append(ATT_weight)
         return ATT_weight
@@ -189,8 +189,8 @@ class Network(nn.Module):
         nOP = len(self.config.PRIMITIVES_pool)
         nNode = sum(1 for i in range(self._steps) for n in range(2+i))
         if isShare:
-            w_normal = self.NewATT_weights(nOP)
-            w_reduce = self.NewATT_weights(nOP)
+            w_normal = self.NewATT_weights(nOP,False)
+            w_reduce = self.NewATT_weights(nOP,True)
             # w_normal = ATT_weights(self.config,nOP,self.topo_darts)
             # w_reduce = ATT_weights(self.config,nOP,self.topo_darts)
             # self._arch_parameters.extend(w_normal.get_param())
@@ -200,7 +200,7 @@ class Network(nn.Module):
             if not isShare:
                 # w_cell = ATT_weights(self.config,nOP,self._steps)
                 # self._arch_parameters.extend(w_cell.get_param())
-                w_cell = self.NewATT_weights(nOP)
+                w_cell = self.NewATT_weights(nOP,cell.reduction)
             if cell.reduction:                
                 cell.weight = w_reduce if isShare else w_cell
                 nReduct=nReduct+1
@@ -217,6 +217,10 @@ class Network(nn.Module):
     def AfterEpoch(self):
         for ATT_weight in self.listWeight:
             ATT_weight.AfterEpoch()
+            if ATT_weight.isReduce:     #仅用于兼容darts
+                self.alphas_normal = ATT_weight.alphas_
+            else:
+                self.alphas_reduce = ATT_weight.alphas_
 
     def arch_parameters(self):
         nzParam = sum(p.numel() for p in self._arch_parameters)
@@ -226,9 +230,7 @@ class Network(nn.Module):
 
     def genotype(self):
         if self.config.op_struc == "PCC":
-            return self.genotype_PCC()
-        
-        return ""
+            return self.genotype_PCC()      
 
         def _parse(weights):
             PRIMITIVES_pool = self.config.PRIMITIVES_pool
@@ -251,8 +253,16 @@ class Network(nn.Module):
             return gene
         #alphas_normal,alphas_reduce=self.alphas_normal,self.alphas_reduce
         if self.config.weight_share:
-            assert len(self._arch_parameters)==2
-        alphas_normal,alphas_reduce=self._arch_parameters[0],self._arch_parameters[1]
+            if self.config.op_struc == "se":
+                if not hasattr(self,"alphas_normal"):
+                    return "",False
+                alphas_normal,alphas_reduce=self.alphas_normal,self.alphas_reduce
+            else:
+                assert len(self._arch_parameters)==2
+                alphas_normal,alphas_reduce=self._arch_parameters[0],self._arch_parameters[1]
+        else:
+            return "",False
+                
         gene_normal = _parse(F.softmax(alphas_normal, dim=-1).data.cpu().numpy())
         gene_reduce = _parse(F.softmax(alphas_reduce, dim=-1).data.cpu().numpy())
 
@@ -261,7 +271,7 @@ class Network(nn.Module):
             normal=gene_normal, normal_concat=concat,
             reduce=gene_reduce, reduce_concat=concat
         )
-        return genotype
+        return genotype,True
 
     def genotype_PCC(self):
         if self.config.weight_share:
@@ -319,4 +329,4 @@ class Network(nn.Module):
             normal=gene_normal, normal_concat=concat,
             reduce=gene_reduce, reduce_concat=concat
         )
-        return genotype
+        return genotype,True

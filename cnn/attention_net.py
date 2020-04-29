@@ -68,6 +68,8 @@ class se_operate(nn.Module):
     
     def AfterEpoch(self):
         self.alpha=self.alpha/self.nStep
+        a = torch.sum(self.alpha).item()
+        assert np.isclose(a, 1) 
 
     #elegant code from https://github.com/moskomule/senet.pytorch/blob/master/senet/se_module.py
     def forward(self, listOPX):
@@ -79,6 +81,7 @@ class se_operate(nn.Module):
         y = torch.stack( y_list ,dim=1) 
         w = self.fc(y)
         m_ = torch.mean(w,dim=0) 
+        #assert np.isclose(torch.sum(m_).item(), 1) 
         self.alpha = self.alpha+ m_.cpu()
         self.nStep = self.nStep+1
         out = 0
@@ -90,11 +93,12 @@ class se_operate(nn.Module):
 
 #多个cell之间可共用weight!!!
 class ATT_weights(object):
-    def __init__(self,config, nOP,topo):
+    def __init__(self,config, nOP,topo,isReduce=False):
         super(ATT_weights, self).__init__()
         self.config = config
         self.nets = None
         self.topo = topo
+        self.isReduce = isReduce
         self.hasBeta = self.config.op_struc == "PCC" or  self.config.op_struc == "pair"
         #k = sum(1 for i in range(self.nNode) for n in range(2+i))            
         k = self.topo.hGraph[-1]
@@ -112,10 +116,18 @@ class ATT_weights(object):
 
     def AfterEpoch(self):
         if self.config.op_struc=="se":
+            list_alpha=[]            
             for net in self.nets:
                 net.AfterEpoch()
+                list_alpha.append(net.alpha)
+            self.alphas_ = torch.stack(list_alpha,dim=0)
+            #print("")
 
     def get_weight(self):
+        if not hasattr(self,"alphas_"):
+            # assert False
+            return [None,None]
+
         w_a,w_b = F.softmax(self.alphas_, dim=-1),None
         if self.hasBeta:
             if False:                
@@ -138,6 +150,8 @@ class ATT_weights(object):
     
     def get_gene(self):
         [weights,weights2] = self.get_weight()
+        if weights is None:
+            return ""
         weights = weights.detach().cpu().numpy()
         if weights2 is not None:
             weights2 = weights2.detach().cpu().numpy()

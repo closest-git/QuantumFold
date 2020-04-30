@@ -287,8 +287,8 @@ class  Visdom_Visualizer(Visualize):
         self.vis.text(self.log_text, win)
         print(self.log_text)
 
-    def __getattr__(self, name):
-        return getattr(self.vis, name)
+    # def __getattr__(self, name):
+    #     return getattr(self.vis, name)
 
 def PROJECTOR_test():
     """ ==================使用PROJECTOR对高维向量可视化====================

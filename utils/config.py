@@ -50,21 +50,12 @@ class QuantumFold_config:
     def problem(self):
         return self.data.problem()
         
-    def model_info(self):
-        return "QF_shallow"
+    def legend(self):
+        share = "" if self.weight_share else "***"
+        attention = self.attention[0:3]
+        express = self.cell_express
+        leg = f"\"{express}{share}_{self.op_struc}_{self.primitive}_{attention}\""
+      
+        return leg
 
-    def env_title(self):
-        title=f"{self.support.value}"
-        if self.isFC:       title += "[FC]"
-        if self.custom_legend is not None:
-            title = title + f"_{self.custom_legend}"
-        return title
-
-    def main_str(self):
-        main_str = f"{self.data_set}_ layers={self.nLayer} depth={self.depth} batch={self.batch_size} nTree={self.nTree} response_dim={self.response_dim} " \
-            f"\nmax_out={self.max_out} choice=[{self.choice_func}] feat_info={self.feat_info}" \
-            f"\nNO_ATTENTION={self.no_attention} reg_L1={self.reg_L1} path_way={self.path_way}"
-        #if self.isFC:       main_str+=" [FC]"
-        if self.custom_legend is not None:
-            main_str = main_str + f"_{self.custom_legend}"
-        return main_str
+    

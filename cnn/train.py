@@ -17,7 +17,7 @@ from torch.autograd import Variable
 from model import NetworkCIFAR as Network
 sys.path.append(os.path.abspath("utils"))
 from Visualizing import *
-
+from config import *
 # cd E:\fengnaixing\cys\QuantumNetcd 
 # python cnn/train.py --auxiliary --cutout
 #
@@ -47,6 +47,7 @@ args = parser.parse_args()
 
 args.save = 'search/{}-{}'.format(args.save, time.strftime("%Y%m%d-%H%M%S"))
 utils.create_exp_dir(args.save, scripts_to_save=glob.glob('*.py'))
+config = QuantumFold_config(None, 0)
 
 log_format = '%(asctime)s %(message)s'
 logging.basicConfig(stream=sys.stdout, level=logging.INFO,
@@ -74,12 +75,14 @@ def main():
   logging.info("args = %s", args)
 
   args.arch = 'S_CYS_cifar'
+  args.arch = 'G_C_se'
+  args.learning_rate*=2
   genotype = eval("genotypes.%s" % args.arch)
   print(f"======args={args}\n")
   print(f"======genotype={genotype}\n")
   model = Network(args.init_channels, CIFAR_CLASSES, args.layers, args.auxiliary, genotype)
   model = model.cuda()
-  model.visual =  Visdom_Visualizer(env_title=f"T{args.set}_{args.arch}")
+  model.visual =  Visdom_Visualizer(env_title=f"T{args.set}_{args.arch}_{config.legend()}_lr{args.learning_rate}")
   model.visual.img_dir = "./results/images/"
   print(model)
 
@@ -156,8 +159,7 @@ def train(train_queue, model, criterion, optimizer,epoch):
 
     if step % args.report_freq == 0:
       logging.info('train %03d %e %f %f', step, objs.avg, top1.avg, top5.avg)
-    print(f'\r\ttrain_{step}@{epoch}:\tloss={objs.avg:.2f}, top1={top1.avg:.2f}, top5={top5.avg:.2f} T={time.time()-t0:.1f}\t',end="")
-
+    print(f'\r\t{args.arch}_{step}@{epoch}:\tloss={objs.avg:.2f}, top1={top1.avg:.2f}, top5={top5.avg:.2f} T={time.time()-t0:.1f}\t',end="")
   return top1.avg, objs.avg
 
 

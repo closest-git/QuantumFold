@@ -115,8 +115,9 @@ class Identity_Stride_(nn.Module):
 
   def forward(self, x):
     if self.stride == 1:
-      return x
-    return x[:,:,::self.stride,::self.stride]
+      return x.mul(1.)
+    out = x[:,:,::self.stride,::self.stride].mul(1.)
+    return out
 
 class Zero(nn.Module):
 

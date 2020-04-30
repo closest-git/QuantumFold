@@ -76,10 +76,11 @@ class Network(nn.Module):
             self._initialize_weights()
         else:
             self._initialize_alphas()
-        share = "" if self.config.weight_share else "***"
-        attention = self.config.attention[0:3]
-        express = self.config.cell_express
-        self.title = f"\"{self.config.weights}_{express}{share}_{self.topo_darts.legend}_{self.config.op_struc}_{self.config.primitive}_{attention}\""
+        # share = "" if self.config.weight_share else "***"
+        # attention = self.config.attention[0:3]
+        # express = self.config.cell_express
+        # self.title = f"\"{self.config.weights}_{express}{share}_{self.topo_darts.legend}_{self.config.op_struc}_{self.config.primitive}_{attention}\""
+        self.title = f"{self.config.legend()}_{self.topo_darts.legend}"
         print("")
 
     def new(self):

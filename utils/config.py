@@ -31,8 +31,8 @@ class QuantumFold_config:
         self.plot_train = False
         self.plot_attention = True
 
-        self.op_struc = "se"           #"PCC" "darts" "pair" "se"
-        self.weights = "cys"              #"cys"  
+        self.op_struc = "PCC"           #"PCC" "darts" "pair" "se"
+        #self.weights = "cys"              #"cys"  
         self.primitive = "p1"              #"p0"    "p1"  "p1"   "c0"
         self.attention = "softmax"         #"entmax" 
         self.weight_share = True            #True

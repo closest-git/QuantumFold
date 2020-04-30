@@ -116,9 +116,10 @@ class StemCell(nn.Module):
     def forward(self, results):
         assert len(results)>=2
         if self.config.op_struc != "se": 
-            [weights,weights2] = self.weight.get_weight()
+            [weights,weights2] = self.weight.get_weight("forward")
         else:
             weights,weights2 = None,None
+        #[weights,weights2] = self.weight.get_weight()   #se_net一样可以返回weight,非常微妙啊
 
         if True:
             #s0 = self.preprocess0(s0);            s1 = self.preprocess1(s1)
@@ -171,6 +172,11 @@ class StemCell(nn.Module):
     def weight2gene(self):
         gene = self.weight.get_gene()
         return gene
+    
+    def get_alpha(self):
+        [weights,weights2] = self.weight.get_weight()
+        assert weights is not None
+        return weights
 
 '''
     需要和Cell合并

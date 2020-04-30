@@ -82,8 +82,11 @@ class se_operate(nn.Module):
         w = self.fc(y)
         m_ = torch.mean(w,dim=0) 
         #assert np.isclose(torch.sum(m_).item(), 1) 
-        self.alpha = self.alpha+ m_.cpu()
-        self.nStep = self.nStep+1
+        if False:       #原则上应停止累加
+            pass
+        else:
+            self.alpha = self.alpha+ m_.cpu()
+            self.nStep = self.nStep+1           
         out = 0
         for i,opx in enumerate(listOPX):
             w_i = w[:,i:i+1].squeeze()
@@ -102,28 +105,27 @@ class ATT_weights(object):
         self.hasBeta = self.config.op_struc == "PCC" or  self.config.op_struc == "pair"
         #k = sum(1 for i in range(self.nNode) for n in range(2+i))            
         k = self.topo.hGraph[-1]
-        if self.config.op_struc=="se":
-            self.nets = [se_operate(nOP) for i in range(self.topo.nMostEdge())]
+        self.desc = f"W[{k},{nOP}]"
+        if self.config.op_struc=="se":            
+            pass
         else:
             self.alphas_ = Variable(1e-3*torch.randn((k,nOP)).cuda(), requires_grad=True)
             if self.hasBeta:
-                self.betas_ = Variable(1e-3*torch.randn(k).cuda(), requires_grad=True)  
+                self.betas_ = Variable(1e-3*torch.randn(k).cuda(), requires_grad=True)          
+
+        if self.hasBeta:   self.desc+="\tbeta"
+        if self.isReduce:   self.desc+="\treduce"
+
+    def __repr__(self):
+        return self.desc
 
     def BeforeEpoch(self):
-        if self.config.op_struc=="se":
-            for net in self.nets:
-                net.BeforeEpoch()
+        pass
 
     def AfterEpoch(self):
-        if self.config.op_struc=="se":
-            list_alpha=[]            
-            for net in self.nets:
-                net.AfterEpoch()
-                list_alpha.append(net.alpha)
-            self.alphas_ = torch.stack(list_alpha,dim=0)
-            #print("")
+        pass
 
-    def get_weight(self):
+    def get_weight(self,purpose="get_gene"):
         if not hasattr(self,"alphas_"):
             # assert False
             return [None,None]
@@ -195,4 +197,32 @@ class ATT_weights(object):
         else:
             return [self.alphas_]
 
+class ATT_se(ATT_weights):
+    def __init__(self,config, nOP,topo,isReduce=False):
+        super(ATT_se, self).__init__(config, nOP,topo,isReduce)
+        self.nets = [se_operate(nOP) for i in range(self.topo.nMostEdge())]
+        self.desc+=f"\t\"{self.nets[0]}\"x{len(self.nets)}"
+
+    def __repr__(self):
+        return self.desc
+
+    def BeforeEpoch(self):
+        for net in self.nets:
+            net.BeforeEpoch()
+
+    def AfterEpoch(self):
+        list_alpha=[]            
+        for net in self.nets:
+            net.AfterEpoch()
+            list_alpha.append(net.alpha)
+        self.alphas_ = torch.stack(list_alpha,dim=0)
+            #print("")
+
+    def get_weight(self):
+        if not hasattr(self,"alphas_"):
+            # assert False
+            return [None,None]
+
+        return [self.alphas_,None]
+        
         

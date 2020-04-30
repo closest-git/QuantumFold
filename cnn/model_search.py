@@ -71,11 +71,9 @@ class Network(nn.Module):
         C_prev = self.cells[-1].nChanel
         self.global_pooling = nn.AdaptiveAvgPool2d(1)
         self.classifier = nn.Linear(C_prev, num_classes)
-        #print(self.cells)
-        if self.config.weights=="cys":
-            self._initialize_weights()
-        else:
-            self._initialize_alphas()
+        #print(self.cells)        
+        self._initialize_weights()
+        #self._initialize_alphas()
         # share = "" if self.config.weight_share else "***"
         # attention = self.config.attention[0:3]
         # express = self.config.cell_express
@@ -97,7 +95,7 @@ class Network(nn.Module):
         else:
             s0,s1=None,None
 
-        self.UpdateWeights()
+        #self.UpdateWeights()
         attention_func= F.softmax if self.config.attention == "softmax" else entmax15
         all_s=[]
         for i, cell in enumerate(self.cells):
@@ -116,7 +114,7 @@ class Network(nn.Module):
         logits = self.classifier(out.view(out.size(0),-1))
         return logits    
 
-    def UpdateWeights(self):
+    def UpdateWeights(self):        #可以删除了
         if self.config.weights == "cys":
             return
 
@@ -160,7 +158,7 @@ class Network(nn.Module):
         logits = self(input)
         return self._criterion(logits, target)
 
-    def _initialize_alphas(self):
+    def _initialize_alphas(self):       #可以删除了
         k = sum(2+i for i in range(self._steps) )
         k = sum(1 for i in range(self._steps) for n in range(2+i))
         num_ops = len(PRIMITIVES)
@@ -178,12 +176,15 @@ class Network(nn.Module):
             self._arch_parameters.append(self.betas_reduce)  
     
     def NewATT_weights(self,nOP,isReduce):
-        ATT_weight = ATT_weights(self.config,nOP,self.topo_darts,isReduce)            
+        if self.config.op_struc=="se":
+            ATT_weight = ATT_se(self.config,nOP,self.topo_darts,isReduce) 
+        else:
+            ATT_weight = ATT_weights(self.config,nOP,self.topo_darts,isReduce)            
         self._arch_parameters.extend(ATT_weight.get_param())
         self.listWeight.append(ATT_weight)
         return ATT_weight
 
-    def _initialize_weights(self):
+    def _initialize_weights(self):  
         self.listWeight = []
         self._arch_parameters=[]        
         isShare = self.config.weight_share
@@ -192,15 +193,9 @@ class Network(nn.Module):
         if isShare:
             w_normal = self.NewATT_weights(nOP,False)
             w_reduce = self.NewATT_weights(nOP,True)
-            # w_normal = ATT_weights(self.config,nOP,self.topo_darts)
-            # w_reduce = ATT_weights(self.config,nOP,self.topo_darts)
-            # self._arch_parameters.extend(w_normal.get_param())
-            # self._arch_parameters.extend(w_reduce.get_param())
         nReduct,nNormal=0,0
         for i, cell in enumerate(self.cells):   
             if not isShare:
-                # w_cell = ATT_weights(self.config,nOP,self._steps)
-                # self._arch_parameters.extend(w_cell.get_param())
                 w_cell = self.NewATT_weights(nOP,cell.reduction)
             if cell.reduction:                
                 cell.weight = w_reduce if isShare else w_cell
@@ -209,6 +204,9 @@ class Network(nn.Module):
                 cell.weight = w_normal if isShare else w_cell
                 nNormal=nNormal+1
             cell.init_weight()
+        print(f"======"*16) 
+        for weight in self.listWeight:
+            print(f"====== {weight}")
         print(f"====== _arch_parameters={len(self._arch_parameters)} nReduct={nReduct} nNormal={nNormal}")                          
 
     def BeforeEpoch(self):
@@ -219,9 +217,9 @@ class Network(nn.Module):
         for ATT_weight in self.listWeight:
             ATT_weight.AfterEpoch()
             if ATT_weight.isReduce:     #仅用于兼容darts
-                self.alphas_normal = ATT_weight.alphas_
-            else:
                 self.alphas_reduce = ATT_weight.alphas_
+            else:
+                self.alphas_normal = ATT_weight.alphas_
 
     def arch_parameters(self):
         nzParam = sum(p.numel() for p in self._arch_parameters)

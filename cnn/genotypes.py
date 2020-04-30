@@ -116,9 +116,13 @@ def dump_genotype(model, logging):
     logging.info('genotype = %s', genotype)
     genotype_1 = model.cells[1].weight2gene()
     assert genotype_1 in genotype
-    alphas_normal = model._arch_parameters[0]
-    alphas_normal = F.softmax(alphas_normal, dim=-1).detach().cpu().numpy()
+    if True:
+        alphas_normal = model.cells[1].get_alpha()
+    else:
+        alphas_normal = model._arch_parameters[0]
+        alphas_normal = F.softmax(alphas_normal, dim=-1).detach().cpu().numpy()
     nRow, nCol = alphas_normal.shape
+    assert nRow==14 and nCol==8
     for r in range(nRow):
         ids = sorted(range(nCol), key=lambda c: -alphas_normal[r, c])
         w0 = alphas_normal[r, ids[0]]

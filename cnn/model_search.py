@@ -57,7 +57,7 @@ class Network(nn.Module):
         C_curr = C
         reduction_prev = False
         for i in range(layers):
-            if i in [layers//3, 2*layers//3]:
+            if layers>=3 and i in [layers//3, 2*layers//3]:
                 C_curr *= 2
                 reduction = True
             else:
@@ -195,6 +195,8 @@ class Network(nn.Module):
             w_reduce = self.NewATT_weights(nOP,True)
         nReduct,nNormal=0,0
         for i, cell in enumerate(self.cells):   
+            if type(cell)==Network.stem_01:
+                continue
             if not isShare:
                 w_cell = self.NewATT_weights(nOP,cell.reduction)
             if cell.reduction:                
@@ -209,17 +211,16 @@ class Network(nn.Module):
             print(f"====== {weight}")
         print(f"====== _arch_parameters={len(self._arch_parameters)} nReduct={nReduct} nNormal={nNormal}")                          
 
-    def BeforeEpoch(self):
-        for ATT_weight in self.listWeight:
-            ATT_weight.BeforeEpoch()
-
-    def AfterEpoch(self):
-        for ATT_weight in self.listWeight:
-            ATT_weight.AfterEpoch()
-            if ATT_weight.isReduce:     #仅用于兼容darts
-                self.alphas_reduce = ATT_weight.alphas_
-            else:
-                self.alphas_normal = ATT_weight.alphas_
+    # def BeforeEpoch(self):
+    #     for ATT_weight in self.listWeight:
+    #         ATT_weight.BeforeEpoch()
+    # def AfterEpoch(self):
+    #     for ATT_weight in self.listWeight:
+    #         ATT_weight.AfterEpoch()
+    #         if ATT_weight.isReduce:     #仅用于兼容darts
+    #             self.alphas_reduce = ATT_weight.alphas_
+    #         else:
+    #             self.alphas_normal = ATT_weight.alphas_
 
     def arch_parameters(self):
         nzParam = sum(p.numel() for p in self._arch_parameters)
@@ -228,6 +229,7 @@ class Network(nn.Module):
     
 
     def genotype(self):
+        assert self.config.weight_share
         if self.config.op_struc == "PCC":
             return self.genotype_PCC()      
 
@@ -259,7 +261,7 @@ class Network(nn.Module):
             else:
                 assert len(self._arch_parameters)==2
                 alphas_normal,alphas_reduce=self._arch_parameters[0],self._arch_parameters[1]
-        else:
+        else:            
             return "",False
                 
         gene_normal = _parse(F.softmax(alphas_normal, dim=-1).data.cpu().numpy())

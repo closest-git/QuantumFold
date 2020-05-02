@@ -105,9 +105,17 @@ G_C_se = Genotype(
     normal=[('DepthConv_3', 0), ('DepthConv_3', 1), ('ReLU', 1), ('Conv_3', 0), ('DepthConv_3', 3), ('DepthConv_3', 1), ('Conv_3', 4), ('DepthConv_3', 1)],normal_concat=[2, 3, 4, 5], 
     reduce=[('max_pool_3x3', 0), ('max_pool_3x3', 1), ('BatchNorm2d', 2), ('max_pool_3x3', 0), ('BatchNorm2d', 2), ('DepthConv_3', 3), ('Conv_3', 4), ('Identity', 2)], reduce_concat=[2, 3, 4, 5])
 
+def dump_seperate_genotype(model, logging):
+    for id, cell in enumerate(model.cells):
+        gene = cell.weight2gene()
+        print(f"cell_{id}\t{gene}")    
 
 def dump_genotype(model, logging):
     print("=================="*6)
+    if not model.config.weight_share:
+        dump_seperate_genotype(model,logging)
+        return
+
     PRIMITIVES_pool = model.config.PRIMITIVES_pool
     genotype,isValid = model.genotype()
     if not isValid:
@@ -115,7 +123,8 @@ def dump_genotype(model, logging):
 
     logging.info('genotype = %s', genotype)
     genotype_1 = model.cells[1].weight2gene()
-    assert genotype_1 in genotype
+    if genotype_1 not in genotype:
+        print(f"\n!!!GENOTYPE MisMatch!!! \n{genotype_1}\n{genotype}\n!!!GENOTYPE MisMatch!!!\n")
     if True:
         alphas_normal = model.cells[1].get_alpha()
     else:

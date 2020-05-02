@@ -58,15 +58,16 @@ class se_operate(nn.Module):
             nn.Softmax()
         )  
         self.desc=f"se_operate_{reduction}"
+        self.InitAlpha()
     
     def __repr__(self):
         return self.desc
 
-    def BeforeEpoch(self):
+    def InitAlpha(self):
         self.nStep = 0
         self.alpha = torch.zeros(self.nOP)
     
-    def AfterEpoch(self):
+    def UpdateAlpha(self):
         self.alpha=self.alpha/self.nStep
         a = torch.sum(self.alpha).item()
         assert np.isclose(a, 1) 
@@ -119,10 +120,13 @@ class ATT_weights(object):
     def __repr__(self):
         return self.desc
 
-    def BeforeEpoch(self):
-        pass
+    # def BeforeEpoch(self):
+    #     pass
 
-    def AfterEpoch(self):
+    # def AfterEpoch(self):
+    #     pass
+
+    def step(self):
         pass
 
     def get_weight(self,purpose="get_gene"):
@@ -206,17 +210,20 @@ class ATT_se(ATT_weights):
     def __repr__(self):
         return self.desc
 
-    def BeforeEpoch(self):
-        for net in self.nets:
-            net.BeforeEpoch()
+    # def BeforeEpoch(self):
+    #     for net in self.nets:
+    #         net.BeforeEpoch()
 
-    def AfterEpoch(self):
+    def step(self):
         list_alpha=[]            
         for net in self.nets:
-            net.AfterEpoch()
+            net.UpdateAlpha()
             list_alpha.append(net.alpha)
         self.alphas_ = torch.stack(list_alpha,dim=0)
             #print("")
+        for net in self.nets:   #重置
+            net.InitAlpha()
+
 
     def get_weight(self):
         if not hasattr(self,"alphas_"):

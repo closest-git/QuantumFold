@@ -291,13 +291,6 @@ class  Visdom_Visualizer(Visualize):
     #     return getattr(self.vis, name)
 
 def PROJECTOR_test():
-    """ ==================使用PROJECTOR对高维向量可视化====================
-        https://blog.csdn.net/wsp_1138886114/article/details/87602112
-        PROJECTOR的的原理是通过PCA，T-SNE等方法将高维向量投影到三维坐标系（降维度）。
-        Embedding Projector从模型运行过程中保存的checkpoint文件中读取数据，
-        默认使用主成分分析法（PCA）将高维数据投影到3D空间中，也可以通过设置设置选择T-SNE投影方法，
-        这里做一个简单的展示。
-    """
     log_dirs = "../../runs/projector/"
     BATCH_SIZE = 256
     EPOCHS = 2

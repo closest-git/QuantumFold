@@ -107,7 +107,6 @@ def load(model, model_path):
 #     x.mul_(mask)
 #   return x
 
-
 def create_exp_dir(path, scripts_to_save=None):
   if not os.path.exists(path):
     os.mkdir(path)

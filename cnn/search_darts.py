@@ -104,11 +104,12 @@ def main():
 
     criterion = nn.CrossEntropyLoss()
     criterion = criterion.cuda()
+    #args.layers = 1 #仅用于测试
     model = Network(config, args.init_channels,CIFAR_CLASSES, args.layers, criterion)
     print(model)
     #dump_model_params(model)
     model = model.cuda()
-    model.visual =  Visdom_Visualizer(env_title=f"{args.set}_{model.title}")
+    model.visual = Visdom_Visualizer(env_title=f"{args.set}_{model.title}")
     model.visual.img_dir = "./results/images/"
     logging.info("param size = %.3fMB", utils.count_parameters_in_MB(model))
 
@@ -178,7 +179,7 @@ def train(train_queue, valid_queue, model, architect, criterion, optimizer, lr, 
     tX,t0 = 0,time.time()
     best_prec = 0
     isArchitect = not model.config.experiment.isKeepWarm()     
-    model.BeforeEpoch()
+    #model.BeforeEpoch()
     for step, (input, target) in enumerate(train_queue):
         model.train()
         n = input.size(0)
@@ -211,7 +212,7 @@ def train(train_queue, valid_queue, model, architect, criterion, optimizer, lr, 
         #model.visual.UpdateLoss(title=f"Accuracy on train",legend=f"{model.title}", loss=prec1.item(),yLabel="Accuracy")
         print(f'\r\t{model.title}_{step}@{epoch}:\tloss={objs.avg:.3f}, top1={top1.avg:.2f}, top5={top5.avg:.2f} T={time.time()-t0:.1f}({tX:.3f})\t', end="")
         #break
-    model.AfterEpoch()
+    #model.AfterEpoch()
     print(f'train_{epoch}:best_prec={best_prec}\tT={time.time()-t0:.3f}')
 
     return top1.avg, objs.avg

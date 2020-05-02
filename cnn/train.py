@@ -30,7 +30,7 @@ parser.add_argument('--momentum', type=float, default=0.9, help='momentum')
 parser.add_argument('--weight_decay', type=float, default=3e-4, help='weight decay')
 parser.add_argument('--report_freq', type=float, default=200, help='report frequency')
 parser.add_argument('--gpu', type=int, default=0, help='gpu device id')
-parser.add_argument('--epochs', type=int, default=600, help='num of training epochs')
+parser.add_argument('--epochs', type=int, default=3600, help='num of training epochs')
 parser.add_argument('--init_channels', type=int, default=36, help='num of init channels')
 parser.add_argument('--layers', type=int, default=20, help='total number of layers')
 parser.add_argument('--model_path', type=str, default='saved_models', help='path to save the model')
@@ -44,23 +44,38 @@ parser.add_argument('--seed', type=int, default=0, help='random seed')
 parser.add_argument('--arch', type=str, default='PCDARTS', help='which architecture to use')
 parser.add_argument('--grad_clip', type=float, default=5, help='gradient clipping')
 args = parser.parse_args()
+if False:   #  
+  args.save = 'search/{}-{}'.format(args.save, time.strftime("%Y%m%d-%H%M%S"))
+  utils.create_exp_dir(args.save, scripts_to_save=glob.glob('*.py'))
+  config = QuantumFold_config(None, 0)
 
-args.save = 'search/{}-{}'.format(args.save, time.strftime("%Y%m%d-%H%M%S"))
-utils.create_exp_dir(args.save, scripts_to_save=glob.glob('*.py'))
-config = QuantumFold_config(None, 0)
+  log_format = '%(asctime)s %(message)s'
+  logging.basicConfig(stream=sys.stdout, level=logging.INFO,
+      format=log_format, datefmt='%m/%d %I:%M:%S %p')
+  fh = logging.FileHandler(os.path.join(args.save, 'log.txt'))
+  fh.setFormatter(logging.Formatter(log_format))
+  logging.getLogger().addHandler(fh)
 
-log_format = '%(asctime)s %(message)s'
-logging.basicConfig(stream=sys.stdout, level=logging.INFO,
-    format=log_format, datefmt='%m/%d %I:%M:%S %p')
-fh = logging.FileHandler(os.path.join(args.save, 'log.txt'))
-fh.setFormatter(logging.Formatter(log_format))
-logging.getLogger().addHandler(fh)
+  CIFAR_CLASSES = 10
+  if args.set=='cifar100':
+      CIFAR_CLASSES = 100
 
-CIFAR_CLASSES = 10
-
-if args.set=='cifar100':
-    CIFAR_CLASSES = 100
 def main():
+  args.save = 'search/{}-{}'.format(args.save, time.strftime("%Y%m%d-%H%M%S"))
+  utils.create_exp_dir(args.save, scripts_to_save=glob.glob('*.py'))
+  config = QuantumFold_config(None, 0)
+
+  log_format = '%(asctime)s %(message)s'
+  logging.basicConfig(stream=sys.stdout, level=logging.INFO,
+      format=log_format, datefmt='%m/%d %I:%M:%S %p')
+  fh = logging.FileHandler(os.path.join(args.save, 'log.txt'))
+  fh.setFormatter(logging.Formatter(log_format))
+  logging.getLogger().addHandler(fh)
+
+  CIFAR_CLASSES = 10
+  if args.set=='cifar100':
+      CIFAR_CLASSES = 100
+
   if not torch.cuda.is_available():
     logging.info('no gpu device available')
     sys.exit(1)
@@ -76,13 +91,13 @@ def main():
 
   args.arch = 'S_CYS_cifar'
   args.arch = 'G_C_se'
-  args.learning_rate*=2
+  args.learning_rate/=2
   genotype = eval("genotypes.%s" % args.arch)
   print(f"======args={args}\n")
   print(f"======genotype={genotype}\n")
   model = Network(args.init_channels, CIFAR_CLASSES, args.layers, args.auxiliary, genotype)
   model = model.cuda()
-  model.visual =  Visdom_Visualizer(env_title=f"T{args.set}_{args.arch}_{config.legend()}_lr{args.learning_rate}")
+  model.visual = Visdom_Visualizer(env_title=f"T{args.set}_{args.arch}_{config.legend()}_lr{args.learning_rate}")
   model.visual.img_dir = "./results/images/"
   print(model)
 
@@ -127,7 +142,7 @@ def main():
     if valid_acc > best_acc:
         best_acc = valid_acc
     logging.info('valid_acc %f, best_acc %f', valid_acc, best_acc)
-    model.visual.UpdateLoss(title=f"Accuracy on \"{args.set}\"",legend=f"{args.arch}", loss=valid_acc,yLabel="Accuracy")
+    model.visual.UpdateLoss(title=f"Accuracy on \"{args.set}\"",legend=f"{args.arch}_lr{args.learning_rate}", loss=valid_acc,yLabel="Accuracy")
     utils.save(model, os.path.join(args.save, 'weights.pt'))
 
 

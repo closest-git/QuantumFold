@@ -10,6 +10,11 @@ import numpy as np
 import torch.nn as nn
 import time
 from torch.autograd import Variable
+import sys
+import os
+sys.path.append(os.path.abspath("utils"))
+from config import *
+from some_utils import *
 
 def _concat(xs):
   return torch.cat([x.view(-1) for x in xs])
@@ -22,6 +27,10 @@ class Architect(object):
     self.model = model
     self.optimizer = torch.optim.Adam(self.model.arch_parameters(),
         lr=args.arch_learning_rate, betas=(0.5, 0.999), weight_decay=args.arch_weight_decay)
+    
+    #dump_model_params(self.model.arch_parameters())
+    print(f"Architect parameters={self.model.arch_parameters()}")
+    print("")
   
   def __repr__(self):
     return f"======\nmomentum={self.network_momentum}\noptim={self.optimizer}"
@@ -45,6 +54,13 @@ class Architect(object):
     else:
         self._backward_step(input_valid, target_valid)
     self.optimizer.step()
+
+    for ATT_weight in self.model.listWeight:
+      ATT_weight.step()
+      if ATT_weight.isReduce:     #仅用于兼容darts
+          self.model.alphas_reduce = ATT_weight.alphas_
+      else:
+          self.model.alphas_normal = ATT_weight.alphas_
     #print(f"Architect::step T={time.time()-t0:.3f}")
 
   def isEarlyStopping(self):

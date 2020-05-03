@@ -48,8 +48,6 @@ class ReLUConvBN(nn.Module):
       nn.Conv2d(C_in, C_out, kernel_size, stride=stride, padding=padding, bias=False),
       nn.BatchNorm2d(C_out, affine=affine)
     )
-    # if C_in==256:
-    #     C_in=256
     self.desc = f"ReLUConvBN_C({C_in},{C_out})_K{kernel_size}_s{stride}_a({affine})"
 
   def forward(self, x):

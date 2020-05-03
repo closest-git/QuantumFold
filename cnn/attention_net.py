@@ -205,6 +205,7 @@ class ATT_se(ATT_weights):
     def __init__(self,config, nOP,topo,isReduce=False):
         super(ATT_se, self).__init__(config, nOP,topo,isReduce)
         self.nets = [se_operate(nOP) for i in range(self.topo.nMostEdge())]
+        self.nets = nn.ModuleList(self.nets)
         self.desc+=f"\t\"{self.nets[0]}\"x{len(self.nets)}"
 
     def __repr__(self):

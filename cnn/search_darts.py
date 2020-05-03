@@ -28,7 +28,7 @@ from experiment import *
 
 
 '''
-    python cnn/search_darts.py --gpu 1
+    python cnn/search_darts.py --gpu 1 --layers=20
 '''
 
 parser = argparse.ArgumentParser("cifar")
@@ -104,7 +104,6 @@ def main():
 
     criterion = nn.CrossEntropyLoss()
     criterion = criterion.cuda()
-    #args.layers = 1 #仅用于测试
     model = Network(config, args.init_channels,CIFAR_CLASSES, args.layers, criterion)
     print(model)
     #dump_model_params(model)

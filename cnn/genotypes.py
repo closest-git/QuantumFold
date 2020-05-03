@@ -105,6 +105,28 @@ G_C_se = Genotype(
     normal=[('DepthConv_3', 0), ('DepthConv_3', 1), ('ReLU', 1), ('Conv_3', 0), ('DepthConv_3', 3), ('DepthConv_3', 1), ('Conv_3', 4), ('DepthConv_3', 1)],normal_concat=[2, 3, 4, 5], 
     reduce=[('max_pool_3x3', 0), ('max_pool_3x3', 1), ('BatchNorm2d', 2), ('max_pool_3x3', 0), ('BatchNorm2d', 2), ('DepthConv_3', 3), ('Conv_3', 4), ('Identity', 2)], reduce_concat=[2, 3, 4, 5])
 
+G_C_20=[
+    [('Conv_3', 1), ('Conv_3', 0), ('Conv_3', 0), ('Conv_3', 1), ('ReLU', 3), ('Conv_11', 0), ('Conv_3', 4), ('Conv_3', 3)],
+    [('Conv_3', 0), ('Conv_3', 1), ('Conv_3', 0), ('Conv_3', 1), ('max_pool_3x3', 3), ('Conv_11', 0), ('Conv_11', 4), ('DepthConv_3', 0)],
+    [('Conv_3', 1), ('Conv_3', 0), ('Conv_11', 0), ('Conv_11', 1), ('Conv_11', 0), ('Conv_11', 1), ('Conv_3', 4), ('DepthConv_3', 3)],
+    [('Conv_11', 0), ('Conv_11', 1), ('Conv_11', 0), ('Conv_11', 1), ('Conv_11', 0), ('Conv_11', 1), ('Conv_3', 4), ('Conv_11', 0)],
+    [('Conv_11', 0), ('Conv_11', 1), ('Conv_11', 0), ('Conv_11', 1), ('Conv_11', 0), ('Conv_11', 1), ('BatchNorm2d', 4), ('Conv_11', 0)],
+    [('Conv_3', 0), ('Conv_11', 1), ('Conv_11', 0), ('Conv_11', 1), ('Conv_11', 0), ('Conv_11', 1), ('Conv_3', 4), ('Conv_11', 0)],
+    [('Conv_11', 0), ('Conv_11', 1), ('Conv_11', 0), ('Conv_11', 1), ('Conv_11', 0), ('Conv_11', 1), ('Conv_3', 4), ('Conv_3', 3)],
+    [('Conv_3', 1), ('Conv_3', 0), ('Conv_3', 0), ('Conv_11', 1), ('Conv_3', 3), ('BatchNorm2d', 1), ('Conv_3', 4), ('Conv_3', 3)],
+    [('Conv_3', 1), ('Conv_3', 0), ('Conv_11', 0), ('Conv_11', 1), ('Conv_11', 0), ('Conv_11', 1), ('Conv_3', 4), ('Conv_11', 0)],
+    [('Conv_11', 0), ('Conv_11', 1), ('Conv_11', 0), ('Conv_11', 1), ('Conv_11', 0), ('Conv_11', 1), ('DepthConv_3', 4), ('Conv_11', 0)],
+    [('Conv_11', 0), ('Conv_11', 1), ('Conv_11', 0), ('Conv_11', 1), ('Conv_11', 0), ('Conv_11', 1), ('Conv_11', 0), ('Conv_11', 1)],
+    [('Conv_11', 0), ('Conv_11', 1), ('Conv_11', 0), ('Conv_11', 1), ('Conv_11', 0), ('Conv_11', 1), ('Conv_3', 4), ('Conv_11', 0)],
+    [('Conv_11', 0), ('Conv_11', 1), ('Conv_11', 0), ('Conv_11', 1), ('Conv_11', 0), ('Conv_11', 1), ('Conv_3', 4), ('Conv_11', 0)],
+    [('Conv_11', 0), ('Conv_11', 1), ('Conv_11', 0), ('Conv_11', 1), ('Conv_3', 3), ('Conv_11', 0), ('DepthConv_3', 4), ('Conv_3', 3)],
+    [('Conv_3', 1), ('Conv_3', 0), ('Conv_11', 0), ('Conv_11', 1), ('Conv_3', 3), ('Identity', 0), ('Conv_3', 4), ('Conv_11', 0)],
+    [('BatchNorm2d', 0), ('Conv_11', 1), ('Conv_11', 0), ('Conv_11', 1), ('Identity', 3), ('Conv_11', 0), ('DepthConv_3', 4), ('Identity', 3)],
+    [('BatchNorm2d', 0), ('DepthConv_3', 1), ('Conv_11', 0), ('Conv_11', 1), ('Identity', 3), ('Conv_11', 0), ('Conv_3', 4), ('Conv_11', 3)],
+    [('BatchNorm2d', 0), ('DepthConv_3', 1), ('Conv_11', 0), ('Conv_11', 1), ('ReLU', 3), ('Conv_11', 0), ('Identity', 4), ('Identity', 3)],
+    [('Conv_11', 0), ('Conv_11', 1), ('Conv_11', 0), ('Conv_11', 1), ('Conv_11', 0), ('Conv_11', 1), ('Identity', 4), ('ReLU', 3)],
+    [('ReLU', 1), ('ReLU', 0), ('DepthConv_3', 2), ('DepthConv_3', 1), ('DepthConv_3', 3), ('Conv_11', 1), ('Conv_11', 2), ('DepthConv_3', 1)]   
+]
 def dump_seperate_genotype(model, logging):
     for id, cell in enumerate(model.cells):
         gene = cell.weight2gene()

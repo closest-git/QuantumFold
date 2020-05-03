@@ -136,6 +136,7 @@ def get_latest_file(pattern):
 
 def dump_model_params(model):
     nzParams = 0
+    #named_parameters() just list nn.Modules and nn.Parameters!!! NOT all objects contained in the model !!! 
     for name, param in model.named_parameters():
         if param.requires_grad:
             nzParams += param.nelement()

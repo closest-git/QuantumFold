@@ -17,9 +17,8 @@ from torch.autograd import Variable
 from model import NetworkCIFAR as Network
 sys.path.append(os.path.abspath("utils"))
 from Visualizing import *
-from config import *
 # cd E:\fengnaixing\cys\QuantumNetcd 
-# python cnn/train.py --auxiliary --cutout
+# python cnn/train.py --auxiliary --cutout --arch=G_C_20 --learning_rate=0.0125 --gpu 1
 #
 parser = argparse.ArgumentParser("cifar")
 parser.add_argument('--data', type=str, default='../data', help='location of the data corpus')
@@ -44,38 +43,27 @@ parser.add_argument('--seed', type=int, default=0, help='random seed')
 parser.add_argument('--arch', type=str, default='PCDARTS', help='which architecture to use')
 parser.add_argument('--grad_clip', type=float, default=5, help='gradient clipping')
 args = parser.parse_args()
-if False:   #  
-  args.save = 'search/{}-{}'.format(args.save, time.strftime("%Y%m%d-%H%M%S"))
-  utils.create_exp_dir(args.save, scripts_to_save=glob.glob('*.py'))
-  config = QuantumFold_config(None, 0)
+ 
+args.save = 'search/{}-{}'.format(args.save, time.strftime("%Y%m%d-%H%M%S"))
+utils.create_exp_dir(args.save, scripts_to_save=glob.glob('*.py'))
 
-  log_format = '%(asctime)s %(message)s'
-  logging.basicConfig(stream=sys.stdout, level=logging.INFO,
-      format=log_format, datefmt='%m/%d %I:%M:%S %p')
-  fh = logging.FileHandler(os.path.join(args.save, 'log.txt'))
-  fh.setFormatter(logging.Formatter(log_format))
-  logging.getLogger().addHandler(fh)
+log_format = '%(asctime)s %(message)s'
+logging.basicConfig(stream=sys.stdout, level=logging.INFO,
+    format=log_format, datefmt='%m/%d %I:%M:%S %p')
+fh = logging.FileHandler(os.path.join(args.save, 'log.txt'))
+fh.setFormatter(logging.Formatter(log_format))
+logging.getLogger().addHandler(fh)
 
-  CIFAR_CLASSES = 10
-  if args.set=='cifar100':
-      CIFAR_CLASSES = 100
+CIFAR_CLASSES = 10
+if args.set=='cifar100':
+    CIFAR_CLASSES = 100
 
-def main():
-  args.save = 'search/{}-{}'.format(args.save, time.strftime("%Y%m%d-%H%M%S"))
-  utils.create_exp_dir(args.save, scripts_to_save=glob.glob('*.py'))
-  config = QuantumFold_config(None, 0)
+def legend(args):
+  legend_ = f"T{args.set}_{args.arch}_lr{args.learning_rate}"
+  return legend_
+  #leg = f"\"{express}{share}_{self.op_struc}_{self.primitive}_{attention}\""
 
-  log_format = '%(asctime)s %(message)s'
-  logging.basicConfig(stream=sys.stdout, level=logging.INFO,
-      format=log_format, datefmt='%m/%d %I:%M:%S %p')
-  fh = logging.FileHandler(os.path.join(args.save, 'log.txt'))
-  fh.setFormatter(logging.Formatter(log_format))
-  logging.getLogger().addHandler(fh)
-
-  CIFAR_CLASSES = 10
-  if args.set=='cifar100':
-      CIFAR_CLASSES = 100
-
+def main(): 
   if not torch.cuda.is_available():
     logging.info('no gpu device available')
     sys.exit(1)
@@ -89,15 +77,15 @@ def main():
   logging.info('gpu device = %d' % args.gpu)
   logging.info("args = %s", args)
 
-  args.arch = 'S_CYS_cifar'
-  args.arch = 'G_C_se'
+  # args.arch = 'S_CYS_cifar'
+  # args.arch = 'G_C_se'
   args.learning_rate/=2
   genotype = eval("genotypes.%s" % args.arch)
   print(f"======args={args}\n")
   print(f"======genotype={genotype}\n")
   model = Network(args.init_channels, CIFAR_CLASSES, args.layers, args.auxiliary, genotype)
   model = model.cuda()
-  model.visual = Visdom_Visualizer(env_title=f"T{args.set}_{args.arch}_{config.legend()}_lr{args.learning_rate}")
+  model.visual = Visdom_Visualizer(env_title=legend(args))
   model.visual.img_dir = "./results/images/"
   print(model)
 

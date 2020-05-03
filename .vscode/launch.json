@@ -13,7 +13,13 @@
             "cwd": "${workspaceRoot}",
             "env": {
                 "PYTHONPATH": "${workspaceRoot}"
-            }
+            },
+            "args": [
+                "--auxiliary",
+                "--cutout",
+                "--arch=G_C_20",
+                "--gpu=0"
+            ], 
         },
         {
             "name": "train_imagenet",
@@ -33,6 +39,9 @@
             "program": "E:/QuantumFold/cnn/search_darts.py",
             "console": "integratedTerminal",
             "cwd": "${workspaceRoot}",
+            "args": [
+                "--layers=1"
+            ],
             "env": {
                 "PYTHONPATH": "${workspaceRoot}"
             }

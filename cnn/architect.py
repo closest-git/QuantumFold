@@ -28,8 +28,11 @@ class Architect(object):
     self.optimizer = torch.optim.Adam(self.model.arch_parameters(),
         lr=args.arch_learning_rate, betas=(0.5, 0.999), weight_decay=args.arch_weight_decay)
     
+    print(f"\n======Architect parameters=")
+    for i,param in enumerate(self.model.arch_parameters()):
+      print(f"\t{i} {param.shape}")
     #dump_model_params(self.model.arch_parameters())
-    print(f"Architect parameters={self.model.arch_parameters()}")
+    print(f"======"*16)
     print("")
   
   def __repr__(self):

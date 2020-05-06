@@ -14,6 +14,8 @@ from genotypes import Genotype
 import time
 from MixedOp import *
 from torch.autograd import Variable
+import seaborn as sns;      sns.set()
+import matplotlib.pyplot as plt
 
 class se_channels(nn.Module):
     def __init__(self, channel, reduction=16):
@@ -154,18 +156,30 @@ class ATT_weights(object):
                         
         return [w_a,w_b]
     
-    def get_gene(self):
+    def get_gene(self,plot_path=""):
         [weights,weights2] = self.get_weight()
         if weights is None:
             return ""
         weights = weights.detach().cpu().numpy()
         if weights2 is not None:
             weights2 = weights2.detach().cpu().numpy()
+        
+        nNode = self.topo.nNode
+        nEdges = self.topo.nMostEdge()
         PRIMITIVES_pool = self.config.PRIMITIVES_pool
+        if plot_path is not None:
+            sns.set(font_scale=1)
+            fig, ax = plt.subplots(figsize=(8,3))
+            g = sns.heatmap(weights.T,square=True, cmap='coolwarm', ax=ax)       #, annot=True
+            g.set_yticklabels(PRIMITIVES_pool, rotation=0)
+            g.set_xticklabels([i+1 for i in range(nEdges)],rotation=0)  #rotation=45
+            fig.savefig(plot_path, bbox_inches='tight', pad_inches=0)
+            #plt.show()
+            plt.close("all")
         gene = []
 
         none_index = PRIMITIVES_pool.index('none')
-        nNode = self.topo.nNode
+        
         for i in range(nNode):
             II = self.topo.I_I(i)
             start = self.topo.hGraph[i]     #类似于单刚和总刚

@@ -81,7 +81,7 @@ def main():
         sys.exit(1)
     config = QuantumFold_config(None, 0)
     if config.op_struc == "":        args.batch_size = args.batch_size//4
-    
+    config.exp_dir = args.save
     config.device = OnInitInstance(args.seed, args.gpu)
     if config.primitive == "p0":
         config.PRIMITIVES_pool = ['none','max_pool_3x3','avg_pool_3x3','Identity','BatchNorm2d','ReLU','Conv_3','Conv_5']
@@ -150,13 +150,13 @@ def main():
     print(architect)
     print(f"======\tconfig={config.__dict__}")
     print(f"======\targs={args.__dict__}")
-    t0 = time.time()
+    valid_acc,t0 = 0,time.time()
     for epoch in range(args.epochs):      
         scheduler.step()
         lr = scheduler.get_lr()[0]
         logging.info('epoch %d lr %e', epoch, lr)
-
-        dump_genotype(model,logging)
+        plot_path=f"{model.config.exp_dir}/{model.title}E{epoch}_a{valid_acc:.1f}_"
+        dump_genotype(model,logging,plot_path)
 
         # training
         train_acc, train_obj = train(

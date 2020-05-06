@@ -25,8 +25,8 @@ class Network(nn.Module):
             x = self.stem(x)
             return x
         
-        def weight2gene(self):
-            return "stem_01_{self.nChanel}_{self.reduction}"
+        # def weight2gene(self):
+        #     return "stem_01_{self.nChanel}_{self.reduction}"
         
         def init_weight(self):
             pass

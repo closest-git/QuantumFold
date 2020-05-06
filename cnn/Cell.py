@@ -169,9 +169,9 @@ class StemCell(nn.Module):
                 n += 1
                 weights2 = torch.cat([weights2, tw2], dim=0)
     
-    def weight2gene(self):
-        gene = self.weight.get_gene()
-        return gene
+    # def weight2gene(self):
+    #     gene = self.weight.get_gene()
+    #     return gene
     
     def get_alpha(self):
         [weights,weights2] = self.weight.get_weight()

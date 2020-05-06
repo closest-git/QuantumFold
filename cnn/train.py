@@ -43,7 +43,7 @@ parser.add_argument('--seed', type=int, default=0, help='random seed')
 parser.add_argument('--arch', type=str, default='PCDARTS', help='which architecture to use')
 parser.add_argument('--grad_clip', type=float, default=5, help='gradient clipping')
 args = parser.parse_args()
- 
+args.eta_min = 1.00-3
 args.save = 'search/{}-{}'.format(args.save, time.strftime("%Y%m%d-%H%M%S"))
 utils.create_exp_dir(args.save, scripts_to_save=glob.glob('*.py'))
 
@@ -79,7 +79,7 @@ def main():
 
   # args.arch = 'S_CYS_cifar'
   # args.arch = 'G_C_se'
-  args.learning_rate/=2
+  # args.learning_rate/=2
   genotype = eval("genotypes.%s" % args.arch)
   print(f"======args={args}\n")
   print(f"======genotype={genotype}\n")
@@ -116,7 +116,8 @@ def main():
   valid_queue = torch.utils.data.DataLoader(
       valid_data, batch_size=args.batch_size, shuffle=False, pin_memory=True, num_workers=2)
 
-  scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, float(args.epochs))
+  scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, float(args.epochs),eta_min=args.eta_min)
+  print(f"optimizer={optimizer}\nscheduler=CosineAnnealingLR,eta_min={args.eta_min}\n")
   best_acc = 0.0
   for epoch in range(args.epochs):
     scheduler.step()

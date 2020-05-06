@@ -31,11 +31,11 @@ class QuantumFold_config:
         self.plot_train = False
         self.plot_attention = True
 
-        self.op_struc = "se"           #"PCC" "darts" "pair" "se"
+        self.op_struc = "darts"           #"PCC" "darts" "pair" "se"
         #self.weights = "cys"              #"cys"  
-        self.primitive = "p1"              #"p0"    "p1"  "p1"   "c0"
+        self.primitive = "p1"              #"p0"    "p1"  "p2"   "c0"
         self.attention = "softmax"         #"entmax" "se"
-        self.weight_share = False            #True
+        self.weight_share = True            #True
         self.warm_up = 0
         self.cell_express = ""              #""
         self.bi_optimize = ""              #"A_w" "A_A" 
@@ -55,7 +55,7 @@ class QuantumFold_config:
         share = "" if self.weight_share else "***"
         attention = self.attention[0:3]
         express = self.cell_express
-        leg = f"\"{express}{share}_{self.op_struc}_{self.primitive}_{attention}\""
+        leg = f"{express}{share}^{self.op_struc}^{self.primitive}^{attention}"
       
         return leg
 

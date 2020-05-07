@@ -106,6 +106,7 @@ S_CYS_cifar = Genotype(
 
 '''
     96.9{lr=0.125}
+    96.68{lr=0.125-0.001}
 '''
 G_C_se = Genotype(
     normal=[('DepthConv_3', 0), ('DepthConv_3', 1), ('ReLU', 1), ('Conv_3', 0), ('DepthConv_3', 3), ('DepthConv_3', 1), ('Conv_3', 4), ('DepthConv_3', 1)],normal_concat=[2, 3, 4, 5], 

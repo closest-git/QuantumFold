@@ -83,7 +83,11 @@ class Network(nn.Module):
             x.data.copy_(y.data)
         return model_new
 
-    
+
+    #data-aware init
+    def init_on_data(self,dataloader,criterion):
+        return
+            
     
     def forward(self, input):
         if hasattr(self,"stem"):    #建议删除stem，应该合并到cells

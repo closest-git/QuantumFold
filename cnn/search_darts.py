@@ -34,7 +34,7 @@ from experiment import *
 parser = argparse.ArgumentParser("cifar")
 parser.add_argument('--data', type=str, default='../data',help='location of the data corpus')
 parser.add_argument('--set', type=str, default='cifar10',help='location of the data corpus')
-parser.add_argument('--batch_size', type=int,default=96, help='batch size')  # 256
+parser.add_argument('--batch_size', type=int,default=256, help='batch size')  # 256
 parser.add_argument('--learning_rate', type=float,default=0.1, help='init learning rate')
 parser.add_argument('--learning_rate_min', type=float,default=0.0, help='min learning rate')
 parser.add_argument('--momentum', type=float, default=0.9, help='momentum')
@@ -88,7 +88,7 @@ def main():
     elif config.primitive == "p1":
         config.PRIMITIVES_pool = ['none','max_pool_3x3','Identity','BatchNorm2d','ReLU','Conv_3','DepthConv_3','Conv_11']
     elif config.primitive == "p2":
-        config.PRIMITIVES_pool = ['none','max_pool_3x3','Identity','BatchNorm2d','ReLU','Conv_3','DepthConv_3','Conv_11']
+        config.PRIMITIVES_pool = ['none','max_pool_3x3','max_pool_5x5','Identity','BatchNorm2d','ReLU','Conv_3','DepthConv_3','Conv_5','DepthConv_5','Conv_11']
     elif config.primitive == "c0":       
         config.PRIMITIVES_pool = ['none','max_pool_3x3','avg_pool_3x3','skip_connect','sep_conv_3x3','sep_conv_5x5','dil_conv_3x3','dil_conv_5x5']
     args.load_workers = 8
@@ -146,7 +146,10 @@ def main():
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
         optimizer, float(args.epochs), eta_min=args.learning_rate_min)
 
-    architect = Architect(model, args)
+    architect = Architect(model, args)   
+    #model.init_on_data(valid_queue,criterion)     
+    architect.init_on_data(valid_queue,criterion)         #data-aware init
+   
     print(architect)
     print(f"======\tconfig={config.__dict__}")
     print(f"======\targs={args.__dict__}")

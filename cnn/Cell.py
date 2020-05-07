@@ -71,18 +71,18 @@ class StemCell(nn.Module):
         self.weight=None      
         self.excitation = None#se_channels(self.nChanel,reduction=2)  
 
-        if self.config.primitive == "p2":
-            if reduction_prev:
-                self.preprocess0 = FactorizedReduce(C_prev_prev, C, affine=False)
-            else:
-                self.preprocess0 = nn.Conv2d(C_prev_prev, C, 1, 1, 0, bias=False)
-            self.preprocess1 = nn.Conv2d(C_prev, C, 1, 1, 0, bias=False)
+        # if self.config.primitive == "p20":
+        #     if reduction_prev:
+        #         self.preprocess0 = FactorizedReduce(C_prev_prev, C, affine=False)
+        #     else:
+        #         self.preprocess0 = nn.Conv2d(C_prev_prev, C, 1, 1, 0, bias=False)
+        #     self.preprocess1 = nn.Conv2d(C_prev, C, 1, 1, 0, bias=False)
+        # else:
+        if reduction_prev:
+            self.preprocess0 = FactorizedReduce(C_prev_prev, C, affine=False)
         else:
-            if reduction_prev:
-                self.preprocess0 = FactorizedReduce(C_prev_prev, C, affine=False)
-            else:
-                self.preprocess0 = ReLUConvBN(C_prev_prev, C, 1, 1, 0, affine=False)
-            self.preprocess1 = ReLUConvBN(C_prev, C, 1, 1, 0, affine=False)
+            self.preprocess0 = ReLUConvBN(C_prev_prev, C, 1, 1, 0, affine=False)
+        self.preprocess1 = ReLUConvBN(C_prev, C, 1, 1, 0, affine=False)
 
         self._steps = steps
         #self._multiplier = multiplier

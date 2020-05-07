@@ -30,7 +30,8 @@ class Architect(object):
     
     print(f"\n======Architect parameters=")
     for i,param in enumerate(self.model.arch_parameters()):
-      print(f"\t{i} {param.shape}")
+      print(f"\t{i} {param.shape}",end="")
+      #print(f"\t{i} {param}")
     #dump_model_params(self.model.arch_parameters())
     print(f"======"*16)
     print("")
@@ -48,6 +49,30 @@ class Architect(object):
     dtheta = _concat(torch.autograd.grad(loss, self.model.parameters())).data + self.network_weight_decay*theta
     unrolled_model = self._construct_model_from_theta(theta.sub(eta, moment+dtheta))
     return unrolled_model
+  
+  #data-aware init
+  def init_on_data(self,dataloader,criterion):
+    config = self.model.config
+    if config.op_struc != "se":    
+      return
+    
+    dataloader_iterator = iter(dataloader)
+    try:
+        data, target = next(dataloader_iterator)
+        with torch.no_grad():
+            result = self.model(data.cuda())    #参见_loss(self, input, target):
+            loss = criterion(result, target.cuda())
+        
+        for ATT_weight in self.model.listWeight:
+          ATT_weight.step()
+          if ATT_weight.isReduce:     #仅用于兼容darts
+              self.model.alphas_reduce = ATT_weight.alphas_
+          else:
+              self.model.alphas_normal = ATT_weight.alphas_
+        print(f"====== Architect::init_on_data\tdata={data.shape},loss={loss.item()}")
+        print(f"")
+    except StopIteration:
+        return
 
   def step(self, input_train, target_train, input_valid, target_valid, eta, network_optimizer, unrolled):
     #t0=time.time()

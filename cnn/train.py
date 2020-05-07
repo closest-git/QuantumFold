@@ -43,20 +43,6 @@ parser.add_argument('--seed', type=int, default=0, help='random seed')
 parser.add_argument('--arch', type=str, default='PCDARTS', help='which architecture to use')
 parser.add_argument('--grad_clip', type=float, default=5, help='gradient clipping')
 args = parser.parse_args()
-args.eta_min = 1.00-3
-args.save = 'search/{}-{}'.format(args.save, time.strftime("%Y%m%d-%H%M%S"))
-utils.create_exp_dir(args.save, scripts_to_save=glob.glob('*.py'))
-
-log_format = '%(asctime)s %(message)s'
-logging.basicConfig(stream=sys.stdout, level=logging.INFO,
-    format=log_format, datefmt='%m/%d %I:%M:%S %p')
-fh = logging.FileHandler(os.path.join(args.save, 'log.txt'))
-fh.setFormatter(logging.Formatter(log_format))
-logging.getLogger().addHandler(fh)
-
-CIFAR_CLASSES = 10
-if args.set=='cifar100':
-    CIFAR_CLASSES = 100
 
 def legend(args):
   legend_ = f"T{args.set}_{args.arch}_lr{args.learning_rate}"
@@ -64,6 +50,21 @@ def legend(args):
   #leg = f"\"{express}{share}_{self.op_struc}_{self.primitive}_{attention}\""
 
 def main(): 
+  args.eta_min = 0
+  args.save = 'search/{}-{}'.format(args.save, time.strftime("%Y%m%d-%H%M%S"))
+  utils.create_exp_dir(args.save, scripts_to_save=glob.glob('*.py'))
+
+  log_format = '%(asctime)s %(message)s'
+  logging.basicConfig(stream=sys.stdout, level=logging.INFO,
+      format=log_format, datefmt='%m/%d %I:%M:%S %p')
+  fh = logging.FileHandler(os.path.join(args.save, 'log.txt'))
+  fh.setFormatter(logging.Formatter(log_format))
+  logging.getLogger().addHandler(fh)
+
+  CIFAR_CLASSES = 10
+  if args.set=='cifar100':
+      CIFAR_CLASSES = 100
+
   if not torch.cuda.is_available():
     logging.info('no gpu device available')
     sys.exit(1)
@@ -79,7 +80,6 @@ def main():
 
   # args.arch = 'S_CYS_cifar'
   # args.arch = 'G_C_se'
-  # args.learning_rate/=2
   genotype = eval("genotypes.%s" % args.arch)
   print(f"======args={args}\n")
   print(f"======genotype={genotype}\n")

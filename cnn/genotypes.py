@@ -113,6 +113,14 @@ G_C_se = Genotype(
     reduce=[('max_pool_3x3', 0), ('max_pool_3x3', 1), ('BatchNorm2d', 2), ('max_pool_3x3', 0), ('BatchNorm2d', 2), ('DepthConv_3', 3), ('Conv_3', 4), ('Identity', 2)], reduce_concat=[2, 3, 4, 5])
 
 '''
+    很差，莫名其妙
+'''
+GC_se5 = Genotype(
+    normal=[('DepthConv_5', 0), ('DepthConv_5', 1), ('ReLU', 1), ('Conv_5', 0), ('DepthConv_5', 3), ('DepthConv_5', 1), ('Conv_5', 4), ('DepthConv_5', 1)],normal_concat=[2, 3, 4, 5], 
+    reduce=[('max_pool_5x5', 0), ('max_pool_5x5', 1), ('BatchNorm2d', 2), ('max_pool_5x5', 0), ('BatchNorm2d', 2), ('DepthConv_5', 3), ('Conv_5', 4), ('Identity', 2)], reduce_concat=[2, 3, 4, 5])
+
+
+'''
     96.5{lr=0.125  E535}      难以理解
 '''
 G_C_20=[
@@ -166,7 +174,7 @@ def dump_genotype(model, logging,plot_path):
         alphas_normal = model._arch_parameters[0]
         alphas_normal = F.softmax(alphas_normal, dim=-1).detach().cpu().numpy()
     nRow, nCol = alphas_normal.shape
-    assert nRow==14 and nCol==8
+    #assert nRow==14 and nCol==8
     for r in range(nRow):
         ids = sorted(range(nCol), key=lambda c: -alphas_normal[r, c])
         w0 = alphas_normal[r, ids[0]]

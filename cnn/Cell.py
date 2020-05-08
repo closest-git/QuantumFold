@@ -70,6 +70,7 @@ class StemCell(nn.Module):
         self.config = config
         self.weight=None      
         self.excitation = None#se_channels(self.nChanel,reduction=2)  
+        #self.excitation = eca_channel(self.nChanel)
 
         # if self.config.primitive == "p20":
         #     if reduction_prev:

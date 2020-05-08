@@ -138,6 +138,25 @@ class se_channels(nn.Module):
         self.forward_verify(x,out)        
         return out
 
+class eca_channel(nn.Module):
+    def __init__(self, channel, k_size=3):
+        super(eca_channel, self).__init__()
+        self.avg_pool = nn.AdaptiveAvgPool2d(1)
+        self.conv = nn.Conv1d(1, 1, kernel_size=k_size, padding=(k_size - 1) // 2, bias=False) 
+        self.sigmoid = nn.Sigmoid()
+
+    def forward(self, x):
+        b, c, h, w = x.size()
+        y = self.avg_pool(x)
+        # Two different branches of ECA module
+        y0 = y.squeeze(-1).transpose(-1, -2)
+        y = self.conv(y.squeeze(-1).transpose(-1, -2)).transpose(-1, -2).unsqueeze(-1)
+
+        # Multi-scale information fusion
+        y = self.sigmoid(y)
+
+        return x * y.expand_as(x)
+
 class se_operate(nn.Module):
     def __init__(self, nOP, reduction=2):
         super(se_operate, self).__init__()
@@ -162,7 +181,7 @@ class se_operate(nn.Module):
     
     def UpdateAlpha(self):
         self.alpha=self.alpha/self.nStep
-        print("\tUpdateAlpha nStep={self.nStep}",end="")
+        #print(f"\tnStep={self.nStep}",end="")
         a = torch.sum(self.alpha).item()
         assert np.isclose(a, 1) 
 
@@ -181,11 +200,14 @@ class se_operate(nn.Module):
             pass
         else:
             self.alpha = self.alpha+ m_.cpu()
-            self.nStep = self.nStep+1           
-        out = 0
-        for i,opx in enumerate(listOPX):
-            w_i = w[:,i:i+1].squeeze()
-            out = out+torch.einsum('bcxy,b->bcxy',opx,w_i)          
+            self.nStep = self.nStep+1    
+        if False:      #似乎都可以，真奇怪 
+            out = 0
+            for i,opx in enumerate(listOPX):
+                w_i = w[:,i:i+1].squeeze()
+                out = out+torch.einsum('bcxy,b->bcxy',opx,w_i)  
+        else:
+            out = sum(w * opx for w, opx in zip(m_, listOPX))        
         
         return out
 

@@ -28,7 +28,7 @@ from experiment import *
 
 
 '''
-    python cnn/search_darts.py --gpu 1 --layers=20
+    python cnn/search_darts.py --gpu 1 --layers=20 --primitive=p2 --legend='' 
 '''
 
 parser = argparse.ArgumentParser("cifar")
@@ -55,7 +55,9 @@ parser.add_argument('--train_portion', type=float,default=0.5, help='portion of 
 parser.add_argument('--unrolled', action='store_true',default=False, help='use one-step unrolled validation loss')
 parser.add_argument('--arch_learning_rate', type=float,default=6e-4, help='learning rate for arch encoding')
 parser.add_argument('--arch_weight_decay', type=float,default=1e-3, help='weight decay for arch encoding')
-
+parser.add_argument('--primitive', type=str,default='p1', help='p0,p1,p2,c0')
+parser.add_argument('--load_workers', type=int,default='8')
+parser.add_argument('--legend', type=str,default='')
 
 if False:
     args = parser.parse_args()
@@ -82,16 +84,21 @@ def main():
     config = QuantumFold_config(None, 0)
     if config.op_struc == "":        args.batch_size = args.batch_size//4
     config.exp_dir = args.save
+    config.primitive = args.primitive
     config.device = OnInitInstance(args.seed, args.gpu)
     if config.primitive == "p0":
         config.PRIMITIVES_pool = ['none','max_pool_3x3','avg_pool_3x3','Identity','BatchNorm2d','ReLU','Conv_3','Conv_5']
     elif config.primitive == "p1":
         config.PRIMITIVES_pool = ['none','max_pool_3x3','Identity','BatchNorm2d','ReLU','Conv_3','DepthConv_3','Conv_11']
-    elif config.primitive == "p2":
-        config.PRIMITIVES_pool = ['none','max_pool_3x3','max_pool_5x5','Identity','BatchNorm2d','ReLU','Conv_3','DepthConv_3','Conv_5','DepthConv_5','Conv_11']
+    elif config.primitive == "p2" or config.primitive == "p21":
+        config.PRIMITIVES_pool = ['none','max_pool_3x3','max_pool_5x5','skip_connect','Identity',
+        'BatchNorm2d','ReLU','Conv_3','DepthConv_3','Conv_5','DepthConv_5','Conv_11']
+    elif config.primitive == "p3":
+        config.PRIMITIVES_pool = ['none','max_pool_3x3','max_pool_5x5','skip_connect','Identity',
+        'BatchNorm2d','ReLU','Conv_3','DepthConv_3','Conv_5','DepthConv_5','Conv_11','sep_conv_3x3']
     elif config.primitive == "c0":       
         config.PRIMITIVES_pool = ['none','max_pool_3x3','avg_pool_3x3','skip_connect','sep_conv_3x3','sep_conv_5x5','dil_conv_3x3','dil_conv_5x5']
-    args.load_workers = 8
+    #args.load_workers = 8
 
     np.random.seed(args.seed)
     torch.cuda.set_device(args.gpu)
@@ -108,7 +115,7 @@ def main():
     print(model)
     #dump_model_params(model)
     model = model.cuda()
-    model.visual = Visdom_Visualizer(env_title=f"{args.set}_{model.title}")
+    model.visual = Visdom_Visualizer(env_title=f"{args.set}_{model.title}_{args.legend}")
     model.visual.img_dir = "./results/images/"
     logging.info("param size = %.3fMB", utils.count_parameters_in_MB(model))
 

@@ -33,7 +33,7 @@ class QuantumFold_config:
 
         self.op_struc = "se"           #"PCC" "darts" "pair" "se"
         #self.weights = "cys"              #"cys"  
-        self.primitive = "p2"              #"p0"    "p1"  "p2"   "c0"
+        self.primitive = "p2"              #"p0"    "p1"  "p2"  "p3"  "c0"
         self.attention = "softmax"         #"entmax" "se"
         self.weight_share = True            #True
         self.warm_up = 0

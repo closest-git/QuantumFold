@@ -40,7 +40,10 @@
             "console": "integratedTerminal",
             "cwd": "${workspaceRoot}",
             "args": [
-                "--layers=8"
+                "--layers=8",
+                "--primitive=p2",
+                "--batch_size=32",
+                "--load_workers=0"
             ],
             "env": {
                 "PYTHONPATH": "${workspaceRoot}"

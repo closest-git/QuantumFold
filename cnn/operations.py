@@ -5,7 +5,7 @@ OPS = {
   'none' : lambda C, stride, affine: Zero(stride),
   'avg_pool_3x3' : lambda C, stride, affine: nn.AvgPool2d(3, stride=stride, padding=1, count_include_pad=False),
   'max_pool_3x3' : lambda C, stride, affine: nn.MaxPool2d(3, stride=stride, padding=1),
-  'max_pool_5x5' : lambda C, stride, affine: nn.MaxPool2d(5, stride=stride, padding=1),
+  'max_pool_5x5' : lambda C, stride, affine: nn.MaxPool2d(5, stride=stride, padding=2),
   'global_pool' : lambda C, stride, affine: nn.Sequential(
       nn.AdaptiveAvgPool2d(output_size=(None,None)),Identity_Stride_(stride)
     ),

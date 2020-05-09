@@ -170,19 +170,24 @@ class se_operate(nn.Module):
             nn.Softmax()
         )  
         self.desc=f"se_operate_{reduction}"
-        self.InitAlpha()
+        self.nStep = 0
+        #self.cur_alpha = torch.zeros(self.nOP).cuda()
+        self.alpha_sum = torch.zeros(self.nOP)
     
     def __repr__(self):
         return self.desc
 
-    def InitAlpha(self):
-        self.nStep = 0
-        self.alpha = torch.zeros(self.nOP)
+    # def InitAlpha(self):
+    #     self.nStep = 0
+    #     self.alpha = torch.zeros(self.nOP)
     
     def UpdateAlpha(self):
-        self.alpha=self.alpha/self.nStep
+        self.alpha=self.alpha_sum/self.nStep
         #print(f"\tnStep={self.nStep}",end="")
         a = torch.sum(self.alpha).item()
+        self.alpha_sum.fill_(0)
+        self.nStep = 0
+        
         assert np.isclose(a, 1) 
 
     #elegant code from https://github.com/moskomule/senet.pytorch/blob/master/senet/se_module.py
@@ -194,13 +199,11 @@ class se_operate(nn.Module):
             y_list.append(y)
         y = torch.stack( y_list ,dim=1) 
         w = self.fc(y)
-        m_ = torch.mean(w,dim=0) 
+        m_ = torch.mean(w,dim=0).detach() 
         #assert np.isclose(torch.sum(m_).item(), 1) 
-        if False:       #原则上应停止累加
-            pass
-        else:
-            self.alpha = self.alpha+ m_.cpu()
-            self.nStep = self.nStep+1    
+
+        self.alpha_sum += m_.cpu()
+        self.nStep = self.nStep+1    
         if False:      #似乎都可以，真奇怪 
             out = 0
             for i,opx in enumerate(listOPX):
@@ -350,8 +353,8 @@ class ATT_se(ATT_weights):
             list_alpha.append(net.alpha)
         self.alphas_ = torch.stack(list_alpha,dim=0)
             #print("")
-        for net in self.nets:   #重置
-            net.InitAlpha()
+        # for net in self.nets:   #重置
+        #     net.InitAlpha()
 
 
     def get_weight(self):

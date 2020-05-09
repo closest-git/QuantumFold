@@ -55,7 +55,7 @@ class Architect(object):
     config = self.model.config
     if config.op_struc != "se":    
       return
-    
+    config.search_alpha = True
     dataloader_iterator = iter(dataloader)
     try:
         data, target = next(dataloader_iterator)
@@ -71,11 +71,13 @@ class Architect(object):
               self.model.alphas_normal = ATT_weight.alphas_
         print(f"====== Architect::init_on_data\tdata={data.shape},loss={loss.item()}")
         print(f"")
+        config.search_alpha=False
     except StopIteration:
         return
 
   def step(self, input_train, target_train, input_valid, target_valid, eta, network_optimizer, unrolled):
     #t0=time.time()
+    self.model.config.search_alpha=True
     self.optimizer.zero_grad()
     if unrolled:
         self._backward_step_unrolled(input_train, target_train, input_valid, target_valid, eta, network_optimizer)
@@ -89,6 +91,7 @@ class Architect(object):
           self.model.alphas_reduce = ATT_weight.alphas_
       else:
           self.model.alphas_normal = ATT_weight.alphas_
+    self.model.config.search_alpha=False
     #print(f"Architect::step T={time.time()-t0:.3f}")
 
   def isEarlyStopping(self):

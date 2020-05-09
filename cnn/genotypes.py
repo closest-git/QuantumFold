@@ -97,6 +97,13 @@ PC_DARTS_image = Genotype(
     normal=[('skip_connect', 1), ('sep_conv_3x3', 0), ('sep_conv_3x3', 0), ('skip_connect', 1), ('sep_conv_3x3', 1), ('sep_conv_3x3', 3), ('sep_conv_3x3', 1), ('dil_conv_5x5', 4)], normal_concat=range(2, 6),
     reduce=[('sep_conv_3x3', 0), ('skip_connect', 1), ('dil_conv_5x5', 2), ('max_pool_3x3', 1), ('sep_conv_3x3', 2), ('sep_conv_3x3', 1), ('sep_conv_5x5', 0), ('sep_conv_3x3', 3)], reduce_concat=range(2, 6))
 
+'''
+    94.1{lr=0.25}   asap居然弄虚作假，真令人失望
+'''
+GC_asap = Genotype(
+    normal=[('sep_conv_3x3', 0), ('sep_conv_3x3', 1), ('sep_conv_3x3', 1), ('skip_connect', 0), ('skip_connect', 3), ('skip_connect', 1), ('skip_connect', 4), ('skip_connect', 1)],normal_concat=[2, 3, 4, 5], 
+    reduce=[('avg_pool_3x3', 0), ('sep_conv_3x3', 1), ('dil_conv_5x5', 2), ('avg_pool_3x3', 0),
+    ('max_pool_3x3', 1), ('skip_connect', 2), ('skip_connect', 0), ('skip_connect', 2)], reduce_concat=[2, 3, 4, 5])
 
 PCDARTS = PC_DARTS_cifar
 
@@ -113,11 +120,12 @@ G_C_se = Genotype(
     reduce=[('max_pool_3x3', 0), ('max_pool_3x3', 1), ('BatchNorm2d', 2), ('max_pool_3x3', 0), ('BatchNorm2d', 2), ('DepthConv_3', 3), ('Conv_3', 4), ('Identity', 2)], reduce_concat=[2, 3, 4, 5])
 
 '''
-    很差，莫名其妙
+    94.4{lr=0.125}  很差，莫名其妙
 '''
 GC_se5 = Genotype(
     normal=[('DepthConv_5', 0), ('DepthConv_5', 1), ('ReLU', 1), ('Conv_5', 0), ('DepthConv_5', 3), ('DepthConv_5', 1), ('Conv_5', 4), ('DepthConv_5', 1)],normal_concat=[2, 3, 4, 5], 
     reduce=[('max_pool_5x5', 0), ('max_pool_5x5', 1), ('BatchNorm2d', 2), ('max_pool_5x5', 0), ('BatchNorm2d', 2), ('DepthConv_5', 3), ('Conv_5', 4), ('Identity', 2)], reduce_concat=[2, 3, 4, 5])
+
 
 
 '''

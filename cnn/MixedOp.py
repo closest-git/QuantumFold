@@ -64,6 +64,10 @@ class MixedOp_se(MixedOp):
     def forward(self, x):        
         assert hasattr(self,'se_op')
         se_net = self.se_op
+        if not self.config.search_alpha:
+            alpha = self.se_op.alpha
+            return super().forward(x,alpha)
+
         nOP = len(self._ops)
         b, c, _, _ = x.size()
 

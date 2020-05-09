@@ -178,7 +178,7 @@ def main():
         logging.info(f'valid_acc {valid_acc} T={time.time()-t0:.2f}')
         config.experiment.best_score = max(valid_acc,config.experiment.best_score)
         utils.save(model, os.path.join(args.save, 'weights.pt'))
-        model.visual.UpdateLoss(title=f"Accuracy on \"{args.set}\"",legend=f"{model.title}", loss=valid_acc,yLabel="Accuracy")
+        model.visual.UpdateLoss(title=f"Accuracy on \"{args.set}\"",legend=f"{model.title}", loss=valid_acc,yLabel="Accuracy")        
 
 
 def train(train_queue, valid_queue, model, architect, criterion, optimizer, lr, epoch):
@@ -209,6 +209,7 @@ def train(train_queue, valid_queue, model, architect, criterion, optimizer, lr, 
         loss.backward()
         nn.utils.clip_grad_norm(model.parameters(), args.grad_clip)
         optimizer.step()
+        #aneal.step()
         tX += time.time()-t1
         prec1, prec5 = utils.accuracy(logits, target, topk=(1, 5))
         best_prec = max(best_prec,prec1.item())

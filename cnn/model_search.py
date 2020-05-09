@@ -10,6 +10,23 @@ import time
 from MixedOp import *
 from Cell import *
 
+class OP_Anealer():
+    def __init__(self,config,T0=1.3,beta=0.95):
+        super(OP_Anealer, self).__init__()
+        self.step = 0
+        self.beta = 0.9
+        self.T = T0
+        self.T_warmup = self.T   #Grace-temperature of ASAP
+        pass
+
+    def AfterEpoch(self):
+        self.T = self.T*self.beta
+        self.step += 1
+    
+    def T_prune(self,nOP):
+        return 0.4/nOP
+
+    
 class Network(nn.Module):
     class stem_01(nn.Module):
         def __init__(self,config,C_curr, reduction):
@@ -19,7 +36,7 @@ class Network(nn.Module):
                 nn.BatchNorm2d(C_curr)
             )
             self.nChanel = C_curr
-            self.reduction = reduction
+            self.reduction = reduction            
         
         def forward(self, x):
             x = self.stem(x)
@@ -37,14 +54,16 @@ class Network(nn.Module):
         self._C = C
         self._num_classes = num_classes
         self._layers = layers
-        self._criterion = criterion
-        self._steps = steps     #number of nodes in each cell
+        self._criterion = criterion 
+
+        self.pAnealer = OP_Anealer(self.config)
         #self._multiplier = multiplier      #该设计不是很好
+
+        self._steps = steps     #number of nodes in each cell
         _concat = list(range(2+self._steps-multiplier, self._steps+2))
         self.topo_darts = TopoStruc(self._steps,_concat)    #always has 4 nodes
         #self._concat = list(range(2+self._steps-multiplier, self._steps+2))
-        #self._concat = [2+self._steps-1]   #有问题
-        
+        #self._concat = [2+self._steps-1]   #有问题        
         if False:
             C_curr = stem_multiplier*C
             self.stem = nn.Sequential(

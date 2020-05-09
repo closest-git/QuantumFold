@@ -102,7 +102,7 @@ class StemCell(nn.Module):
                 else:
                     op = MixedOp(config,C, stride)
 
-                self._ops.append(op)
+                self._ops.append(op)    
 
     def init_weight(self):
         nOP = len(self._ops)

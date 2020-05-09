@@ -94,7 +94,12 @@ class Architect(object):
     self.model.config.search_alpha=False
     #print(f"Architect::step T={time.time()-t0:.3f}")
 
+  '''
+    The search procedure stops when there are two or more than two skip-connects in one cell.
+  '''
   def isEarlyStopping(self):
+    for cell in self.model.cells:
+      pass
     return False
 
   def _backward_step(self, input_valid, target_valid):

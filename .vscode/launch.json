@@ -43,7 +43,7 @@
                 "--layers=8",
                 "--primitive=p2",
                 "--batch_size=32",
-                "--load_workers=0"
+                "--load_workers=0",
             ],
             "env": {
                 "PYTHONPATH": "${workspaceRoot}"

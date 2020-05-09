@@ -98,12 +98,21 @@ PC_DARTS_image = Genotype(
     reduce=[('sep_conv_3x3', 0), ('skip_connect', 1), ('dil_conv_5x5', 2), ('max_pool_3x3', 1), ('sep_conv_3x3', 2), ('sep_conv_3x3', 1), ('sep_conv_5x5', 0), ('sep_conv_3x3', 3)], reduce_concat=range(2, 6))
 
 '''
-    94.1{lr=0.25}   asap居然弄虚作假，真令人失望
+    94.1{lr=0.25}   asap令人失望
 '''
 GC_asap = Genotype(
     normal=[('sep_conv_3x3', 0), ('sep_conv_3x3', 1), ('sep_conv_3x3', 1), ('skip_connect', 0), ('skip_connect', 3), ('skip_connect', 1), ('skip_connect', 4), ('skip_connect', 1)],normal_concat=[2, 3, 4, 5], 
     reduce=[('avg_pool_3x3', 0), ('sep_conv_3x3', 1), ('dil_conv_5x5', 2), ('avg_pool_3x3', 0),
     ('max_pool_3x3', 1), ('skip_connect', 2), ('skip_connect', 0), ('skip_connect', 2)], reduce_concat=[2, 3, 4, 5])
+
+'''
+   
+'''
+GC_huawei = Genotype(
+    normal=[('skip_connect', 0), ('sep_conv_5x5', 1), ('sep_conv_3x3', 0), ('sep_conv_5x5', 1), ('skip_connect', 0), ('sep_conv_3x3', 1), ('sep_conv_3x3', 0), ('sep_conv_3x3', 1)],normal_concat=[2, 3, 4, 5], 
+    reduce=[('max_pool_3x3', 0), ('max_pool_3x3', 1), ('skip_connect', 0), ('skip_connect', 2),
+    ('max_pool_3x3', 0), ('skip_connect', 2), ('skip_connect', 2), ('skip_connect', 3)], reduce_concat=[2, 3, 4, 5])
+
 
 PCDARTS = PC_DARTS_cifar
 

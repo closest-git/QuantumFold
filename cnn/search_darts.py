@@ -28,7 +28,8 @@ from experiment import *
 
 
 '''
-    python cnn/search_darts.py --gpu 1 --layers=20 --primitive=p2 --legend='' 
+    python cnn/search_darts.py 
+    1 --attention=softmax --primitive=p2 --legend='' --layers=20 --load_workers=0
 '''
 
 parser = argparse.ArgumentParser("cifar")
@@ -58,6 +59,7 @@ parser.add_argument('--arch_weight_decay', type=float,default=1e-3, help='weight
 parser.add_argument('--primitive', type=str,default='p1', help='p0,p1,p2,c0')
 parser.add_argument('--load_workers', type=int,default='8')
 parser.add_argument('--legend', type=str,default='')
+parser.add_argument('--attention', type=str,default='softmax')
 
 if False:
     args = parser.parse_args()
@@ -85,6 +87,8 @@ def main():
     if config.op_struc == "":        args.batch_size = args.batch_size//4
     config.exp_dir = args.save
     config.primitive = args.primitive
+    config.attention = args.attention
+
     config.device = OnInitInstance(args.seed, args.gpu)
     if config.primitive == "p0":
         config.PRIMITIVES_pool = ['none','max_pool_3x3','avg_pool_3x3','Identity','BatchNorm2d','ReLU','Conv_3','Conv_5']

@@ -115,7 +115,7 @@ class Network(nn.Module):
             s0,s1=None,None
 
         #self.UpdateWeights()
-        attention_func= F.softmax if self.config.attention == "softmax" else entmax15
+        #attention_func= F.softmax if self.config.attention == "softmax" else entmax15
         all_s=[]
         for i, cell in enumerate(self.cells):
             if s0 is None:

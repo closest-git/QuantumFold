@@ -18,7 +18,7 @@ from model import NetworkCIFAR as Network
 sys.path.append(os.path.abspath("utils"))
 from Visualizing import *
 # cd E:\fengnaixing\cys\QuantumNetcd 
-# python cnn/train.py --auxiliary --cutout --arch=G_C_20 --learning_rate=0.0125 --gpu 1
+# python cnn/train.py --auxiliary --cutout --arch=G_C_20 --learning_rate=0.0125 --gpu=1
 #
 parser = argparse.ArgumentParser("cifar")
 parser.add_argument('--data', type=str, default='../data', help='location of the data corpus')
@@ -29,7 +29,7 @@ parser.add_argument('--momentum', type=float, default=0.9, help='momentum')
 parser.add_argument('--weight_decay', type=float, default=3e-4, help='weight decay')
 parser.add_argument('--report_freq', type=float, default=200, help='report frequency')
 parser.add_argument('--gpu', type=int, default=0, help='gpu device id')
-parser.add_argument('--epochs', type=int, default=3600, help='num of training epochs')
+parser.add_argument('--epochs', type=int, default=600, help='num of training epochs')
 parser.add_argument('--init_channels', type=int, default=36, help='num of init channels')
 parser.add_argument('--layers', type=int, default=20, help='total number of layers')
 parser.add_argument('--model_path', type=str, default='saved_models', help='path to save the model')
@@ -45,11 +45,12 @@ parser.add_argument('--grad_clip', type=float, default=5, help='gradient clippin
 args = parser.parse_args()
 
 def legend(args):
-  legend_ = f"T{args.set}_{args.arch}_lr{args.learning_rate}"
+  legend_ = f"T{args.set}_{args.arch}_E{args.epochs}_lr{args.learning_rate}"
   return legend_
   #leg = f"\"{express}{share}_{self.op_struc}_{self.primitive}_{attention}\""
 
 def main(): 
+  t0=time.time()
   args.eta_min = 0
   args.save = 'search/{}-{}'.format(args.save, time.strftime("%Y%m%d-%H%M%S"))
   utils.create_exp_dir(args.save, scripts_to_save=glob.glob('*.py'))
@@ -78,8 +79,6 @@ def main():
   logging.info('gpu device = %d' % args.gpu)
   logging.info("args = %s", args)
 
-  # args.arch = 'S_CYS_cifar'
-  # args.arch = 'G_C_se'
   genotype = eval("genotypes.%s" % args.arch)
   print(f"======args={args}\n")
   print(f"======genotype={genotype}\n")
@@ -118,7 +117,7 @@ def main():
 
   scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, float(args.epochs),eta_min=args.eta_min)
   print(f"optimizer={optimizer}\nscheduler=CosineAnnealingLR,eta_min={args.eta_min}\n")
-  best_acc = 0.0
+  best_acc = 0.0  
   for epoch in range(args.epochs):
     scheduler.step()
     logging.info('epoch %d lr %e', epoch, scheduler.get_lr()[0])
@@ -130,7 +129,8 @@ def main():
     valid_acc, valid_obj = infer(valid_queue, model, criterion)
     if valid_acc > best_acc:
         best_acc = valid_acc
-    logging.info('valid_acc %f, best_acc %f', valid_acc, best_acc)
+    #logging.info('valid_acc %f, best_acc %f', valid_acc, best_acc)
+    logging.info(f'valid_acc={valid_acc:.3f}, best_acc={best_acc:.3f}\tT={time.time()-t0:.1f}')
     model.visual.UpdateLoss(title=f"Accuracy on \"{args.set}\"",legend=f"{args.arch}_lr{args.learning_rate}", loss=valid_acc,yLabel="Accuracy")
     utils.save(model, os.path.join(args.save, 'weights.pt'))
 

@@ -39,11 +39,13 @@
             "program": "E:/QuantumFold/cnn/search_darts.py",
             "console": "integratedTerminal",
             "cwd": "${workspaceRoot}",
+            "justMyCode": false,
             "args": [
                 "--layers=8",
-                "--primitive=p2",
-                "--batch_size=32",
+                "--primitive=p1",
+                "--batch_size=96",
                 "--load_workers=0",
+                "--set=cifar10"
             ],
             "env": {
                 "PYTHONPATH": "${workspaceRoot}"

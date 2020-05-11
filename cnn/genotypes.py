@@ -98,7 +98,7 @@ PC_DARTS_image = Genotype(
     reduce=[('sep_conv_3x3', 0), ('skip_connect', 1), ('dil_conv_5x5', 2), ('max_pool_3x3', 1), ('sep_conv_3x3', 2), ('sep_conv_3x3', 1), ('sep_conv_5x5', 0), ('sep_conv_3x3', 3)], reduce_concat=range(2, 6))
 
 '''
-    94.1{lr=0.25}   asap令人失望
+    97.18 {lr=0.25}   还可以
 '''
 GC_asap = Genotype(
     normal=[('sep_conv_3x3', 0), ('sep_conv_3x3', 1), ('sep_conv_3x3', 1), ('skip_connect', 0), ('skip_connect', 3), ('skip_connect', 1), ('skip_connect', 4), ('skip_connect', 1)],normal_concat=[2, 3, 4, 5], 
@@ -106,7 +106,7 @@ GC_asap = Genotype(
     ('max_pool_3x3', 1), ('skip_connect', 2), ('skip_connect', 0), ('skip_connect', 2)], reduce_concat=[2, 3, 4, 5])
 
 '''
-   
+   97.28    
 '''
 GC_huawei = Genotype(
     normal=[('skip_connect', 0), ('sep_conv_5x5', 1), ('sep_conv_3x3', 0), ('sep_conv_5x5', 1), ('skip_connect', 0), ('sep_conv_3x3', 1), ('sep_conv_3x3', 0), ('sep_conv_3x3', 1)],normal_concat=[2, 3, 4, 5], 
@@ -135,7 +135,9 @@ GC_se5 = Genotype(
     normal=[('DepthConv_5', 0), ('DepthConv_5', 1), ('ReLU', 1), ('Conv_5', 0), ('DepthConv_5', 3), ('DepthConv_5', 1), ('Conv_5', 4), ('DepthConv_5', 1)],normal_concat=[2, 3, 4, 5], 
     reduce=[('max_pool_5x5', 0), ('max_pool_5x5', 1), ('BatchNorm2d', 2), ('max_pool_5x5', 0), ('BatchNorm2d', 2), ('DepthConv_5', 3), ('Conv_5', 4), ('Identity', 2)], reduce_concat=[2, 3, 4, 5])
 
-
+GC_se1 = Genotype(
+    normal=[('Conv_3', 0), ('skip_connect', 1), ('max_pool_3x3', 1), ('ReLU', 0), ('DepthConv_3', 2), ('max_pool_3x3', 0), ('Conv_11', 1), ('skip_connect', 3)], normal_concat=[2, 3, 4, 5], 
+    reduce=[('skip_connect', 0), ('ReLU', 1), ('BatchNorm2d', 2), ('skip_connect', 1), ('max_pool_3x3', 2), ('skip_connect', 0), ('DepthConv_3', 4), ('BatchNorm2d', 3)], reduce_concat=[2, 3, 4, 5])
 
 '''
     96.5{lr=0.125  E535}      难以理解

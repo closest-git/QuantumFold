@@ -194,14 +194,14 @@ class Network(nn.Module):
             self._arch_parameters.append(self.betas_normal)
             self._arch_parameters.append(self.betas_reduce)  
     
-    def NewATT_weights(self,nOP,isReduce):
+    def NewAlphas(self,nOP,isReduce):
         if self.config.op_struc=="se":
-            ATT_weight = ATT_se(self.config,nOP,self.topo_darts,isReduce) 
+            alphas = Alpha_se(self.config,nOP,self.topo_darts,isReduce) 
         else:
-            ATT_weight = ATT_weights(self.config,nOP,self.topo_darts,isReduce)            
-        self._arch_parameters.extend(ATT_weight.get_param())
-        self.listWeight.append(ATT_weight)
-        return ATT_weight
+            alphas = Alpha4Cell(self.config,nOP,self.topo_darts,isReduce)            
+        self._arch_parameters.extend(alphas.get_param())
+        self.listWeight.append(alphas)
+        return alphas
 
     def _initialize_weights(self):  
         self.listWeight = []
@@ -211,14 +211,14 @@ class Network(nn.Module):
         nOP = len(self.config.PRIMITIVES_pool)
         nNode = sum(1 for i in range(self._steps) for n in range(2+i))
         if isShare:
-            w_normal = self.NewATT_weights(nOP,False)
-            w_reduce = self.NewATT_weights(nOP,True)
+            w_normal = self.NewAlphas(nOP,False)
+            w_reduce = self.NewAlphas(nOP,True)
         nReduct,nNormal=0,0
         for i, cell in enumerate(self.cells):   
             if type(cell)==Network.stem_01:
                 continue
             if not isShare:
-                w_cell = self.NewATT_weights(nOP,cell.reduction)
+                w_cell = self.NewAlphas(nOP,cell.reduction)
             if cell.reduction:                
                 cell.weight = w_reduce if isShare else w_cell
                 nReduct=nReduct+1

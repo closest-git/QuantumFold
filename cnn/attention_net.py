@@ -214,10 +214,10 @@ class se_operate(nn.Module):
         
         return out
 
-#多个cell之间可共用weight!!!
-class ATT_weights(object):
+#多个cell之间可共用alpha parameters!!!
+class Alpha4Cell(object):
     def __init__(self,config, nOP,topo,isReduce=False):
-        super(ATT_weights, self).__init__()
+        super(Alpha4Cell, self).__init__()
         self.config = config
         self.nets = None
         self.topo = topo
@@ -332,9 +332,9 @@ class ATT_weights(object):
         else:
             return [self.alphas_]
 
-class ATT_se(ATT_weights):
+class Alpha_se(Alpha4Cell):
     def __init__(self,config, nOP,topo,isReduce=False):
-        super(ATT_se, self).__init__(config, nOP,topo,isReduce)
+        super(Alpha_se, self).__init__(config, nOP,topo,isReduce)
         self.nets = [se_operate(nOP) for i in range(self.topo.nMostEdge())]
         self.nets = nn.ModuleList(self.nets)
         self.desc+=f"\t\"{self.nets[0]}\"x{len(self.nets)}"

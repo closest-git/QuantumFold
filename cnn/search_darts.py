@@ -19,6 +19,7 @@ sys.path.append(os.path.abspath("utils"))
 # print(sys.path)
 from config import *
 from some_utils import *
+from tiny_imagenet import *
 from architect import Architect
 from model_search import Network
 from torch.autograd import Variable
@@ -61,23 +62,7 @@ parser.add_argument('--load_workers', type=int,default='8')
 parser.add_argument('--legend', type=str,default='')
 parser.add_argument('--attention', type=str,default='softmax')
 
-if False:
-    args = parser.parse_args()
-    args.save = 'search-{}-{}'.format(args.save,
-                                      time.strftime("%Y%m%d-%H%M%S"))
-    utils.create_exp_dir(args.save, scripts_to_save=glob.glob('*.py'))
-
-    log_format = '%(asctime)s %(message)s'
-    logging.basicConfig(stream=sys.stdout, level=logging.INFO,
-                        format=log_format, datefmt='%m/%d %I:%M:%S %p')
-    fh = logging.FileHandler(os.path.join(args.save, 'log.txt'))
-    fh.setFormatter(logging.Formatter(log_format))
-    logging.getLogger().addHandler(fh)
-
-
 CIFAR_CLASSES = 10
-
-
 
 def main():
     if not torch.cuda.is_available():
@@ -93,10 +78,9 @@ def main():
     if config.primitive == "p0":
         config.PRIMITIVES_pool = ['none','max_pool_3x3','avg_pool_3x3','Identity','BatchNorm2d','ReLU','Conv_3','Conv_5']
     elif config.primitive == "p1":
-        config.PRIMITIVES_pool = ['none','max_pool_3x3','Identity','BatchNorm2d','ReLU','Conv_3','DepthConv_3','Conv_11']
+        config.PRIMITIVES_pool = ['none','max_pool_3x3','skip_connect','BatchNorm2d','ReLU','Conv_3','DepthConv_3','Conv_11']
     elif config.primitive == "p2" or config.primitive == "p21":
-        config.PRIMITIVES_pool = ['none','max_pool_3x3','max_pool_5x5','skip_connect','Identity',
-        'BatchNorm2d','ReLU','Conv_3','DepthConv_3','Conv_5','DepthConv_5','Conv_11']
+        config.PRIMITIVES_pool = ['none','max_pool_3x3','skip_connect','BatchNorm2d','ReLU','Conv_3','DepthConv_3','Conv_11']
     elif config.primitive == "p3":
         config.PRIMITIVES_pool = ['none','max_pool_3x3','max_pool_5x5','skip_connect','Identity',
         'BatchNorm2d','ReLU','Conv_3','DepthConv_3','Conv_5','DepthConv_5','Conv_11','sep_conv_3x3']
@@ -131,11 +115,12 @@ def main():
 
     train_transform, valid_transform = utils._data_transforms_cifar10(args)
     if args.set == 'cifar100':
-        train_data = dset.CIFAR100(
-            root=args.data, train=True, download=True, transform=train_transform)
+        train_data = dset.CIFAR100(root=args.data, train=True, download=True, transform=train_transform)
+    elif args.set == 'tiny_imagenet':        
+        train_data = TinyImageNet200(root=args.data, train=True, download=True)
+        train_transform, valid_transform = None,None
     else:
-        train_data = dset.CIFAR10(
-            root=args.data, train=True, download=True, transform=train_transform)
+        train_data = dset.CIFAR10(root=args.data, train=True, download=True, transform=train_transform)
         #train_data = CIFAR10_x(root=args.data, train=True, download=True, transform=train_transform)
 
     num_train = len(train_data)
@@ -149,8 +134,7 @@ def main():
 
     valid_queue = torch.utils.data.DataLoader(
         train_data, batch_size=args.batch_size,
-        sampler=torch.utils.data.sampler.SubsetRandomSampler(
-            indices[split:num_train]),
+        sampler=torch.utils.data.sampler.SubsetRandomSampler(indices[split:num_train]),
         pin_memory=True, num_workers=0)
     config.experiment = Experiment(config,"cifar_10",model,loss_fn=None,optimizer=optimizer,objective_metric=None)
 

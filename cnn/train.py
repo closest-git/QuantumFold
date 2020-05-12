@@ -117,6 +117,7 @@ def main():
 
   scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, float(args.epochs),eta_min=args.eta_min)
   print(f"optimizer={optimizer}\nscheduler=CosineAnnealingLR,eta_min={args.eta_min}\n")
+  print(f"train_transform={train_transform}\nvalid_transform={valid_transform}\n")
   best_acc = 0.0  
   for epoch in range(args.epochs):
     scheduler.step()

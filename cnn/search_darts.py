@@ -62,18 +62,22 @@ parser.add_argument('--load_workers', type=int,default='8')
 parser.add_argument('--legend', type=str,default='')
 parser.add_argument('--attention', type=str,default='softmax')
 
-CIFAR_CLASSES = 10
-
 def main():
     if not torch.cuda.is_available():
         logging.info('no gpu device available')
         sys.exit(1)
+    if args.set == 'cifar100':
+        N_CLASSES = 100
+    if args.set == 'tiny_imagenet':  
+        N_CLASSES = 200
+    else:
+        N_CLASSES = 10
+
     config = QuantumFold_config(None, 0)
     if config.op_struc == "":        args.batch_size = args.batch_size//4
     config.exp_dir = args.save
     config.primitive = args.primitive
     config.attention = args.attention
-
     config.device = OnInitInstance(args.seed, args.gpu)
     if config.primitive == "p0":
         config.PRIMITIVES_pool = ['none','max_pool_3x3','avg_pool_3x3','Identity','BatchNorm2d','ReLU','Conv_3','Conv_5']
@@ -99,7 +103,7 @@ def main():
 
     criterion = nn.CrossEntropyLoss()
     criterion = criterion.cuda()
-    model = Network(config, args.init_channels,CIFAR_CLASSES, args.layers, criterion)
+    model = Network(config, args.init_channels,N_CLASSES, args.layers, criterion)
     print(model)
     #dump_model_params(model)
     model = model.cuda()
@@ -113,15 +117,19 @@ def main():
         momentum=args.momentum,
         weight_decay=args.weight_decay)
 
-    train_transform, valid_transform = utils._data_transforms_cifar10(args)
+    
     if args.set == 'cifar100':
+        N_CLASSES = 100
+        train_transform, valid_transform = utils._data_transforms_cifar10(args)
         train_data = dset.CIFAR100(root=args.data, train=True, download=True, transform=train_transform)
-    elif args.set == 'tiny_imagenet':        
+    elif args.set == 'tiny_imagenet':       
+        N_CLASSES = 200 
         train_data = TinyImageNet200(root=args.data, train=True, download=True)
-        train_transform, valid_transform = None,None
+        infer_data = TinyImageNet200(root=args.data, train=False, download=True)
     else:
+        train_transform, valid_transform = utils._data_transforms_cifar10(args)
         train_data = dset.CIFAR10(root=args.data, train=True, download=True, transform=train_transform)
-        #train_data = CIFAR10_x(root=args.data, train=True, download=True, transform=train_transform)
+        infer_data = dset.CIFAR10(root=args.data, train=False, download=True, transform=valid_transform)    #这个更合理
 
     num_train = len(train_data)
     indices = list(range(num_train))
@@ -136,6 +144,11 @@ def main():
         train_data, batch_size=args.batch_size,
         sampler=torch.utils.data.sampler.SubsetRandomSampler(indices[split:num_train]),
         pin_memory=True, num_workers=0)
+    if True:
+        infer_queue = torch.utils.data.DataLoader(infer_data, batch_size=args.batch_size, shuffle=False, pin_memory=True, num_workers=0)
+    else:
+        infer_queue = valid_queue
+
     config.experiment = Experiment(config,"cifar_10",model,loss_fn=None,optimizer=optimizer,objective_metric=None)
 
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
@@ -146,23 +159,26 @@ def main():
     architect.init_on_data(valid_queue,criterion)         #data-aware init
    
     print(architect)
-    print(f"======\tconfig={config.__dict__}")
-    print(f"======\targs={args.__dict__}")
+    
+    print(f"======\tconfig={config.__dict__}\n")    
+    print(f"======\targs={args.__dict__}\n")
     valid_acc,t0 = 0,time.time()
     for epoch in range(args.epochs):      
         scheduler.step()
-        lr = scheduler.get_lr()[0]
-        logging.info('epoch %d lr %e', epoch, lr)
         plot_path=f"{model.config.exp_dir}/{model.title}E{epoch}_a{valid_acc:.1f}_"
         dump_genotype(model,logging,plot_path)
+        lr = scheduler.get_lr()[0]
+        logging.info('epoch=%d lr=%e', epoch, lr)
+        print(f"======\tnTrain={train_queue.dataset.__len__()} nSearch={valid_queue.dataset.__len__()} nTest={infer_queue.dataset.__len__()} ")
+        # plot_path=f"{model.config.exp_dir}/{model.title}E{epoch}_a{valid_acc:.1f}_"
+        # dump_genotype(model,logging,plot_path)
 
         # training
-        train_acc, train_obj = train(
-            train_queue, valid_queue, model, architect, criterion, optimizer, lr, epoch)
+        train_acc, train_obj = train(train_queue, valid_queue, model, architect, criterion, optimizer, lr, epoch)
         logging.info(f'train_acc {train_acc} T={time.time()-t0:.2f}')
 
         # validation
-        valid_acc, valid_obj = infer(valid_queue, model, criterion, epoch)
+        valid_acc, valid_obj = infer(infer_queue, model, criterion, epoch)
         logging.info(f'valid_acc {valid_acc} T={time.time()-t0:.2f}')
         config.experiment.best_score = max(valid_acc,config.experiment.best_score)
         utils.save(model, os.path.join(args.save, 'weights.pt'))
@@ -195,7 +211,7 @@ def train(train_queue, valid_queue, model, architect, criterion, optimizer, lr, 
         loss = criterion(logits, target)
 
         loss.backward()
-        nn.utils.clip_grad_norm(model.parameters(), args.grad_clip)
+        nn.utils.clip_grad_norm_(model.parameters(), args.grad_clip)
         optimizer.step()
         #aneal.step()
         tX += time.time()-t1
@@ -257,7 +273,6 @@ if __name__ == '__main__':
     fh = logging.FileHandler(os.path.join(args.save, 'log.txt'))
     fh.setFormatter(logging.Formatter(log_format))
     logging.getLogger().addHandler(fh)
-    if args.set == 'cifar100':
-        CIFAR_CLASSES = 100
+  
 
     main()

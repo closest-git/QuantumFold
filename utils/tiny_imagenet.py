@@ -10,6 +10,7 @@ from PIL import Image
 
 import torch.utils.data as data
 from torchvision.datasets.utils import download_url, check_integrity
+from torchvision.transforms import transforms
 
 IMG_EXTENSIONS = [
     '.jpg', '.JPG', '.jpeg', '.JPEG',
@@ -89,11 +90,26 @@ class TinyImageNet200(data.Dataset):
     download_fname = "tiny-imagenet-200.zip"
     md5 = '90528d7ca1a48142e341f4ef8d21d0de'
 
-    def __init__(self, root, train=True,
-                 transform=None, target_transform=None,
-                 download=False, loader = 'opencv'):
+    def __init__(self, root, train=True,transform=None, target_transform=None,download=False, loader = 'pil'):
         self.root = os.path.expanduser(root)
+        #https://github.com/dragen1860/LearningToCompare-Pytorch/blob/master/MiniImagenet.py    
+        self._MEAN = [0.485, 0.456, 0.406]
+        self._STD = [0.229, 0.224, 0.225]
         self.transform = transform
+        if train:
+            self.transform = transforms.Compose([
+                transforms.RandomCrop(64, padding=4),
+                transforms.RandomHorizontalFlip(),
+                transforms.ToTensor(),
+                transforms.Normalize(self._MEAN, self._STD),
+            ])        
+            # if args.cutout:
+            #     train_transform.transforms.append(Cutout(args.cutout_length))
+        else:
+            self.transform = transforms.Compose([
+                transforms.ToTensor(),
+                transforms.Normalize(self._MEAN, self._STD),
+            ])
         self.target_transform = target_transform
         self.train = train  # training set or test set
         self.fpath = os.path.join(root, self.download_fname)
@@ -160,24 +176,7 @@ class TinyImageNet200(data.Dataset):
         dataset_zip.extractall()
         dataset_zip.close
     
-    def transforms(self):
-        CIFAR_MEAN = [0.49139968, 0.48215827, 0.44653124]
-        CIFAR_STD = [0.24703233, 0.24348505, 0.26158768]
-
-        train_transform = transforms.Compose([
-            transforms.RandomCrop(64, padding=4),
-            transforms.RandomHorizontalFlip(),
-            transforms.ToTensor(),
-            transforms.Normalize(CIFAR_MEAN, CIFAR_STD),
-        ])
-        if args.cutout:
-            train_transform.transforms.append(Cutout(args.cutout_length))
-
-        valid_transform = transforms.Compose([
-            transforms.ToTensor(),
-            transforms.Normalize(CIFAR_MEAN, CIFAR_STD),
-        ])
-        return train_transform, valid_transform
+    
 
 
 

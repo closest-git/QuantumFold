@@ -61,7 +61,7 @@ class MixedOp_se(MixedOp):
         nOP = len(self._ops)   
         self.desc = f"SE_op_{nOP}_C{C}_stride{stride}"
 
-    def forward(self, x):        
+    def forward(self, x, alpha=None,beta=None):        
         assert hasattr(self,'se_op')
         se_net = self.se_op
         if self.config.attention=="E2W" and not self.config.search_alpha:

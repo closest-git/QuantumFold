@@ -182,6 +182,10 @@ class se_operate(nn.Module):
     #     self.alpha = torch.zeros(self.nOP)
     
     def UpdateAlpha(self):
+        if self.nStep==0:
+            print(f"\tnStep=0")
+            self.alpha=self.alpha_sum*1
+            return
         self.alpha=self.alpha_sum/self.nStep
         #print(f"\tnStep={self.nStep}",end="")
         a = torch.sum(self.alpha).item()
@@ -223,6 +227,8 @@ class Alpha4Cell(object):
         self.topo = topo
         self.isReduce = isReduce
         self.hasBeta = self.config.op_struc == "PCC" or  self.config.op_struc == "pair"
+        if self.config.topo_edges == "2":
+            self.hasBeta = True
         #k = sum(1 for i in range(self.nNode) for n in range(2+i))            
         k = self.topo.hGraph[-1]
         self.desc = f"W[{k},{nOP}]"
@@ -230,8 +236,8 @@ class Alpha4Cell(object):
             pass
         else:
             self.alphas_ = Variable(1e-3*torch.randn((k,nOP)).cuda(), requires_grad=True)
-            if self.hasBeta:
-                self.betas_ = Variable(1e-3*torch.randn(k).cuda(), requires_grad=True)          
+        if self.hasBeta:
+            self.betas_ = Variable(1e-3*torch.randn(k).cuda(), requires_grad=True)          
 
         if self.hasBeta:   self.desc+="\tbeta"
         if self.isReduce:   self.desc+="\treduce"
@@ -325,7 +331,9 @@ class Alpha4Cell(object):
         if self.nets is not None:
             for net in self.nets:
                 for name, param in net.named_parameters():
-                    param_list.append(param)         
+                    param_list.append(param)    
+            if self.hasBeta:
+                param_list.append(self.betas_) 
             return param_list   
         if self.hasBeta:
             return [self.alphas_,self.betas_]
@@ -347,8 +355,9 @@ class Alpha_se(Alpha4Cell):
     #         net.BeforeEpoch()
 
     def step(self):
-        list_alpha=[]            
-        for net in self.nets:
+        list_alpha=[]    
+        nNet = len(self.nets)        
+        for i,net in enumerate(self.nets):
             net.UpdateAlpha()
             list_alpha.append(net.alpha)
         self.alphas_ = torch.stack(list_alpha,dim=0)

@@ -39,6 +39,7 @@ class QuantumFold_config:
         self.warm_up = 0
         self.cell_express = ""              #""
         self.bi_optimize = "aneal"          #"aneal" 
+        self.topo_edges = "2"           #""
         
         self.search_alpha = False
         self.err_relative = False
@@ -57,6 +58,7 @@ class QuantumFold_config:
         attention = self.attention[0:3]
         express = self.cell_express
         leg = f"{express}{share}^{self.op_struc}^{self.primitive}^{attention}"
+        leg = f"{express}{share}^{self.op_struc}^{self.primitive}^{self.topo_edges}"
       
         return leg
 

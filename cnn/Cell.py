@@ -68,7 +68,7 @@ class StemCell(nn.Module):
             C_prev_prev, C_prev = cells[-2].nChanel,cells[-1].nChanel
 
         self.config = config
-        self.weight=None      
+        self.alpha=None     
         self.excitation = None#se_channels(self.nChanel,reduction=2)  
         #self.excitation = eca_channel(self.nChanel)
 
@@ -107,9 +107,9 @@ class StemCell(nn.Module):
     def init_weight(self):
         nOP = len(self._ops)
         if self.config.op_struc == "se":
-            assert nOP == len(self.weight.nets)
+            assert nOP == len(self.alpha.nets)
             for i,op in enumerate(self._ops):
-                op.se_op = self.weight.nets[i]
+                op.se_op = self.alpha.nets[i]
         pass
 
 
@@ -117,10 +117,10 @@ class StemCell(nn.Module):
     def forward(self, results):
         assert len(results)>=2
         if self.config.op_struc != "se": 
-            [weights,weights2] = self.weight.get_weight("forward")
+            [weights,weights2] = self.alpha.get_weight("forward")
         else:
             weights,weights2 = None,None
-        #[weights,weights2] = self.weight.get_weight()   #se_net一样可以返回weight,非常微妙啊
+        #[weights,weights2] = self.alpha.get_weight()   #se_net一样可以返回weight,非常微妙啊
 
         if True:
             #s0 = self.preprocess0(s0);            s1 = self.preprocess1(s1)
@@ -130,15 +130,32 @@ class StemCell(nn.Module):
 
         states = [s0, s1]
         offset = 0
-        for i in range(self._steps):
-            if weights2 is not None:
-                s = sum(weights2[offset+j]*self._ops[offset+j](h, weights[offset+j]) for j, h in enumerate(states))
-            elif weights is not None:
-                s = sum(self._ops[offset+j](h, weights[offset+j]) for j, h in enumerate(states))
-            else:
-                s = sum(self._ops[offset+j](h) for j, h in enumerate(states))
+        for i in range(self._steps):                
+            if self.config.topo_edges=="2":
+                assert self.alpha.hasBeta           
+                cands = list(range(len(states)))
+                cands = random.sample(cands,k=2)                
+                beta = self.alpha.betas_[offset:offset+len(states)] 
+                beta = F.softmax(beta,dim=0)
+                #print(f"{[i+offset for i in cands]}\t",end="")
+                s = sum(beta[j]*self._ops[offset+j](states[j], None if weights is None else weights[offset+j]) for j in cands)
+            elif self.config.topo_edges=="1":
+                cands = list(range(len(states)))
+                if weights2 is None:
+                    beta = [1.0 for i in cands]
+                else:
+                    beta = weights2[offset:offset+len(states)] 
+                s = sum(beta[j]*self._ops[offset+j](states[j], None if weights is None else weights[offset+j]) for j in cands)
+            else:   #仅用于兼容PCC
+                if weights2 is not None:
+                    s = sum(weights2[offset+j]*self._ops[offset+j](h, weights[offset+j]) for j, h in enumerate(states))
+                elif weights is not None:
+                    s = sum(self._ops[offset+j](h, weights[offset+j]) for j, h in enumerate(states))
+                else:
+                    s = sum(self._ops[offset+j](h) for j, h in enumerate(states))
 
             offset += len(states)
+            assert offset == self.topo.hGraph[i+1]
             states.append(s)
         out = torch.cat([states[id] for id in self._concat], dim=1)
         if self.excitation is not None:
@@ -170,12 +187,8 @@ class StemCell(nn.Module):
                 n += 1
                 weights2 = torch.cat([weights2, tw2], dim=0)
     
-    # def weight2gene(self):
-    #     gene = self.weight.get_gene()
-    #     return gene
-    
     def get_alpha(self):
-        [weights,weights2] = self.weight.get_weight()
+        [weights,weights2] = self.alpha.get_weight()
         assert weights is not None
         return weights
 

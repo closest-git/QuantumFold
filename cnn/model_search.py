@@ -220,10 +220,10 @@ class Network(nn.Module):
             if not isShare:
                 w_cell = self.NewAlphas(nOP,cell.reduction)
             if cell.reduction:                
-                cell.weight = w_reduce if isShare else w_cell
+                cell.alpha = w_reduce if isShare else w_cell
                 nReduct=nReduct+1
             else:
-                cell.weight = w_normal if isShare else w_cell
+                cell.alpha = w_normal if isShare else w_cell
                 nNormal=nNormal+1
             cell.init_weight()
         print(f"======"*16) 
@@ -279,8 +279,12 @@ class Network(nn.Module):
                     return "",False
                 alphas_normal,alphas_reduce=self.alphas_normal,self.alphas_reduce
             else:
-                assert len(self._arch_parameters)==2
-                alphas_normal,alphas_reduce=self._arch_parameters[0],self._arch_parameters[1]
+                if len(self._arch_parameters)==2:       #[a,a]
+                    alphas_normal,alphas_reduce=self._arch_parameters[0],self._arch_parameters[1]
+                elif len(self._arch_parameters)==4:     #[a,b,a,b]
+                    alphas_normal,alphas_reduce=self._arch_parameters[0],self._arch_parameters[2]
+                else:
+                    assert False
         else:            
             return "",False
                 

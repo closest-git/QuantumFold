@@ -8,6 +8,7 @@
 from collections import namedtuple
 import torch.nn.functional as F
 import torch
+import numpy as np
 Genotype = namedtuple('Genotype', 'normal normal_concat reduce reduce_concat')
 
 PRIMITIVES_darts = [
@@ -134,6 +135,12 @@ G_C_se = Genotype(
 GC_darts_2 = Genotype(
     normal=[('DepthConv_3', 0), ('DepthConv_3', 1), ('DepthConv_3', 2), ('Conv_3', 0), ('Conv_11', 0), ('DepthConv_3', 1), ('Conv_11', 0), ('Conv_3', 1)], normal_concat=[2, 3, 4, 5], 
     reduce=[('max_pool_3x3', 1), ('max_pool_3x3', 0), ('max_pool_3x3', 1), ('max_pool_3x3', 0), ('max_pool_3x3', 1), ('max_pool_3x3', 0), ('Conv_3', 0), ('skip_connect', 1)], reduce_concat=[2, 3, 4, 5])
+'''
+    95.6{lr=0.25}   很差，需要和GC_darts_2对比
+'''
+GC_darts_3 = Genotype(
+    normal=[('DepthConv_3', 1), ('DepthConv_3', 0), ('DepthConv_3', 2), ('DepthConv_3', 1), ('DepthConv_3', 3), ('DepthConv_3', 2), ('DepthConv_3', 4), ('DepthConv_3', 3)], normal_concat=[2, 3, 4, 5], 
+    reduce=[('max_pool_3x3', 1), ('max_pool_3x3', 0), ('max_pool_3x3', 2), ('max_pool_3x3', 1), ('max_pool_3x3', 2), ('BatchNorm2d', 3), ('max_pool_3x3', 4), ('Conv_3', 3)], reduce_concat=[2, 3, 4, 5])
 
 '''
     94.4{lr=0.125}  很差，莫名其妙
@@ -176,10 +183,14 @@ G_C_20=[
 ]
 
 def dump_genotype_v1(model, logging,plot_path):
-    for id, weight in enumerate(model.listWeight):
-        gene = weight.get_gene(plot_path=f"{plot_path}_{id}.jpg")
+    for id, alpha in enumerate(model.listWeight):
+        print(f"-------- cell_{id} {alpha.desc}")
+        if alpha.hasBeta:
+            with np.printoptions(precision=3, suppress=True):
+                print(f"\tbetas={alpha.betas_.detach().cpu().numpy()}")
+        gene = alpha.get_gene(plot_path=f"{plot_path}_{id}.jpg")
         #gene = cell.weight2gene()
-        print(f"cell_{id}\t{gene}")    
+        print(f"\tgene={gene}")    
 
 def dump_genotype(model, logging,plot_path):
     print("=================="*6)
@@ -203,7 +214,8 @@ def dump_genotype(model, logging,plot_path):
         alphas_normal = model._arch_parameters[0]
         alphas_normal = F.softmax(alphas_normal, dim=-1).detach().cpu().numpy()
     nRow, nCol = alphas_normal.shape
-    #assert nRow==14 and nCol==8
+    if not (nRow==14 and nCol==8):
+        return
     for r in range(nRow):
         ids = sorted(range(nCol), key=lambda c: -alphas_normal[r, c])
         w0 = alphas_normal[r, ids[0]]

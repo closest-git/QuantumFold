@@ -61,7 +61,7 @@ class Network(nn.Module):
 
         self._steps = steps     #number of nodes in each cell
         _concat = list(range(2+self._steps-multiplier, self._steps+2))
-        self.topo_darts = TopoStruc(self._steps,_concat)    #always has 4 nodes
+        self.topo_darts = TopoStruc(config,self._steps,_concat)    #always has 4 nodes
         #self._concat = list(range(2+self._steps-multiplier, self._steps+2))
         #self._concat = [2+self._steps-1]   #有问题        
         if False:
@@ -177,22 +177,22 @@ class Network(nn.Module):
         logits = self(input)
         return self._criterion(logits, target)
 
-    def _initialize_alphas(self):       #可以删除了
-        k = sum(2+i for i in range(self._steps) )
-        k = sum(1 for i in range(self._steps) for n in range(2+i))
-        num_ops = len(PRIMITIVES)
-        nCell = len(self.cells)
-        self.alphas_normal = Variable(1e-3*torch.randn(k, num_ops).cuda(), requires_grad=True)
-        self.alphas_reduce = Variable(1e-3*torch.randn(k, num_ops).cuda(), requires_grad=True)
-        self._arch_parameters = [
-            self.alphas_normal,
-            self.alphas_reduce,
-        ]
-        if self.config.op_struc != "darts":
-            self.betas_normal = Variable(1e-3*torch.randn(k).cuda(), requires_grad=True)
-            self.betas_reduce = Variable(1e-3*torch.randn(k).cuda(), requires_grad=True)
-            self._arch_parameters.append(self.betas_normal)
-            self._arch_parameters.append(self.betas_reduce)  
+    # def _initialize_alphas(self):       #可以删除了
+    #     k = sum(2+i for i in range(self._steps) )
+    #     k = sum(1 for i in range(self._steps) for n in range(2+i))
+    #     num_ops = len(PRIMITIVES)
+    #     nCell = len(self.cells)
+    #     self.alphas_normal = Variable(1e-3*torch.randn(k, num_ops).cuda(), requires_grad=True)
+    #     self.alphas_reduce = Variable(1e-3*torch.randn(k, num_ops).cuda(), requires_grad=True)
+    #     self._arch_parameters = [
+    #         self.alphas_normal,
+    #         self.alphas_reduce,
+    #     ]
+    #     if self.config.op_struc != "darts":
+    #         self.betas_normal = Variable(1e-3*torch.randn(k).cuda(), requires_grad=True)
+    #         self.betas_reduce = Variable(1e-3*torch.randn(k).cuda(), requires_grad=True)
+    #         self._arch_parameters.append(self.betas_normal)
+    #         self._arch_parameters.append(self.betas_reduce)  
     
     def NewAlphas(self,nOP,isReduce):
         if self.config.op_struc=="se":
@@ -209,7 +209,7 @@ class Network(nn.Module):
         self._arch_parameters=[]        
         isShare = self.config.weight_share
         nOP = len(self.config.PRIMITIVES_pool)
-        nNode = sum(1 for i in range(self._steps) for n in range(2+i))
+        #nNode = sum(1 for i in range(self._steps) for n in range(2+i))
         if isShare:
             w_normal = self.NewAlphas(nOP,False)
             w_reduce = self.NewAlphas(nOP,True)
@@ -246,11 +246,13 @@ class Network(nn.Module):
         nzParam = sum(p.numel() for p in self._arch_parameters)
         return self._arch_parameters
     
-    
 
     def genotype(self):
+        if self.config.topo_edges == "flat":
+            return None,False
+            
         assert self.config.weight_share
-        if self.config.op_struc == "PCC":
+        if self.config.op_struc == "PCC" or self.config.topo_edges == "2":
             return self.genotype_PCC()      
 
         def _parse(weights):

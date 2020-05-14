@@ -31,7 +31,7 @@ class QuantumFold_config:
         self.plot_train = False
         self.plot_attention = True
 
-        self.op_struc = "se"           #"PCC" "darts" "pair" "se" "sew"
+        self.op_struc = "darts"           #"PCC" "darts" "pair" "se" "sew"
         #self.weights = "cys"              #"cys"  
         self.primitive = "p1"              #"p0"    "p1"  "p2"  "p3"  "c0"
         self.attention = "softmax"         #"softmax" "entmax" "E2W"
@@ -39,7 +39,7 @@ class QuantumFold_config:
         self.warm_up = 0
         self.cell_express = ""              #""
         self.bi_optimize = "aneal"          #"aneal" 
-        self.topo_edges = "2"           #""
+        self.topo_edges = "flat"           #""
         
         self.search_alpha = False
         self.err_relative = False

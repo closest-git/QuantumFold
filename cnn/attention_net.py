@@ -231,7 +231,7 @@ class Alpha4Cell(object):
             self.hasBeta = True
         #k = sum(1 for i in range(self.nNode) for n in range(2+i))            
         k = self.topo.hGraph[-1]
-        self.desc = f"W[{k},{nOP}]"
+        self.desc = f"W[edges={k},nOP={nOP}]"
         if self.config.op_struc=="se":            
             pass
         else:
@@ -290,15 +290,7 @@ class Alpha4Cell(object):
         nNode = self.topo.nNode
         nEdges = self.topo.nMostEdge()
         PRIMITIVES_pool = self.config.PRIMITIVES_pool
-        if plot_path is not None:
-            sns.set(font_scale=1)
-            fig, ax = plt.subplots(figsize=(8,3))
-            g = sns.heatmap(weights.T,square=True, cmap='coolwarm', ax=ax)       #, annot=True
-            g.set_yticklabels(PRIMITIVES_pool, rotation=0)
-            g.set_xticklabels([i+1 for i in range(nEdges)],rotation=0)  #rotation=45
-            fig.savefig(plot_path, bbox_inches='tight', pad_inches=0)
-            #plt.show()
-            plt.close("all")
+        
         gene = []
 
         none_index = PRIMITIVES_pool.index('none')
@@ -323,7 +315,17 @@ class Alpha4Cell(object):
                 edges.append(-cur_max)
                 cur_gene.append((PRIMITIVES_pool[k_best], edge-start))
             edges = sorted(range(nEdge), key=lambda k:edges[k]) #Default is ascending
-            gene.extend([cur_gene[edges[0]], cur_gene[edges[1]]])                
+            gene.extend([cur_gene[edges[0]], cur_gene[edges[1]]])    
+
+        if plot_path is not None:   #已考虑weights2的影响
+            sns.set(font_scale=1)
+            fig, ax = plt.subplots(figsize=(8,3))
+            g = sns.heatmap(weights.T,square=True, cmap='coolwarm', ax=ax)       #, annot=True
+            g.set_yticklabels(PRIMITIVES_pool, rotation=0)
+            g.set_xticklabels([i+1 for i in range(nEdges)],rotation=0)  #rotation=45
+            fig.savefig(plot_path, bbox_inches='tight', pad_inches=0)
+            #plt.show()
+            plt.close("all")            
         return gene
     
     def get_param(self):

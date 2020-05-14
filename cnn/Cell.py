@@ -18,17 +18,23 @@ from attention_net import *
 
 #cell具有特定的拓扑结构
 class TopoStruc():    
-    def __init__(self,nNode,_concat,cells=None):
+    def __init__(self,config,nNode,_concat,cells=None):
         super(TopoStruc, self).__init__()
         assert nNode==4         #为了和DARTS对比
         self.nNode = nNode
+        self.config = config
         self.hGraph = [0]
         end,n = 0,2       
         if cells is not None:   #dense connect:
-           n = len(cells)      
-        for i in range(self.nNode):
-            end = end + n;  n += 1
-            self.hGraph.append(end)
+           n = len(cells)     
+        if self.config.topo_edges == "flat": 
+            for i in range(self.nNode):
+                end = end + 2
+                self.hGraph.append(end)
+        else:
+            for i in range(self.nNode):
+                end = end + n;  n += 1
+                self.hGraph.append(end)
         self._concat = _concat
         self.legend = ""
         print("======"*18)
@@ -90,8 +96,10 @@ class StemCell(nn.Module):
 
         self._ops = nn.ModuleList()
         self._bns = nn.ModuleList()
-        for i in range(self._steps):
-            for j in range(2+i):
+        for i in range(self.topo.nNode):
+            for j in range(self.topo.hGraph[i+1]-self.topo.hGraph[i]):
+        # for i in range(self._steps):
+        #     for j in range(2+i):
                 stride = 2 if reduction and j < 2 else 1
                 if self.config.op_struc == "PCC":
                     op = MixedOp_PCC(config,C, stride)
@@ -103,6 +111,7 @@ class StemCell(nn.Module):
                     op = MixedOp(config,C, stride)
 
                 self._ops.append(op)    
+        assert len(self._ops) == self.topo.nMostEdge()
 
     def init_weight(self):
         nOP = len(self._ops)
@@ -130,8 +139,12 @@ class StemCell(nn.Module):
 
         states = [s0, s1]
         offset = 0
-        for i in range(self._steps):                
-            if self.config.topo_edges=="2":
+        topo = self.topo.hGraph
+        for i in range(self._steps):  
+            if self.config.topo_edges=="flat":
+                cands = [0,1]               
+                s = sum(self._ops[offset+j](states[j], None if weights is None else weights[offset+j]) for j in cands)              
+            elif self.config.topo_edges=="2":
                 assert self.alpha.hasBeta           
                 cands = list(range(len(states)))
                 cands = random.sample(cands,k=2)                
@@ -153,8 +166,8 @@ class StemCell(nn.Module):
                     s = sum(self._ops[offset+j](h, weights[offset+j]) for j, h in enumerate(states))
                 else:
                     s = sum(self._ops[offset+j](h) for j, h in enumerate(states))
-
-            offset += len(states)
+            offset = self.topo.hGraph[i+1]
+            #offset += len(states)
             assert offset == self.topo.hGraph[i+1]
             states.append(s)
         out = torch.cat([states[id] for id in self._concat], dim=1)
